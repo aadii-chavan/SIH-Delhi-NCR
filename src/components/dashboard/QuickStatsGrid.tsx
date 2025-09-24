@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Factory, MapPin, Activity, Clock } from "lucide-react";
+import { TrendingUp, TrendingDown, Factory, MapPin, Clock } from "lucide-react";
 import { airQualityData, getAQIStatus } from "@/data/airQualityData";
 
 interface StatCardProps {
@@ -71,17 +71,11 @@ export function QuickStatsGrid({ className }: { className?: string }) {
   const sourcesSorted = Object.entries(sourcesObj).sort((a, b) => b[1] - a[1]);
   const topTwo = sourcesSorted.slice(0, 2);
 
-  const locations = airQualityData.aqiLocations;
-  const avgAqi = Math.round((locations.reduce((sum, loc) => sum + loc.aqi, 0) || 0) / (locations.length || 1));
-  const avgStatus = getAQIStatus(avgAqi).status;
-  const minLoc = locations.reduce((min, l) => (l.aqi < min.aqi ? l : min), locations[0]);
-  const maxLoc = locations.reduce((max, l) => (l.aqi > max.aqi ? l : max), locations[0]);
-
   const fcAll = airQualityData.forecasts.shortTerm.filter((f) => f.zone === "Delhi Central");
   const fcNext = fcAll.slice(0, 3);
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 ${className}`}>
+    <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 ${className}`}>
       {/* Live AQI — Delhi Central */}
       <StatCard
         title={`Live AQI — ${liveZone}`}
@@ -115,30 +109,7 @@ export function QuickStatsGrid({ className }: { className?: string }) {
         }
       />
 
-      {/* Delhi-NCR Average */}
-      <StatCard
-        title="Delhi-NCR Average"
-        value={`${avgAqi}`}
-        subtitle={avgStatus}
-        icon={<Activity className="w-5 h-5" />}
-        details={
-          <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <div className="text-[11px] text-muted-foreground">Best area</div>
-                <div className="font-medium text-foreground truncate" title={minLoc.location}>{minLoc.location}</div>
-                <div className="text-[11px]">AQI {minLoc.aqi}</div>
-              </div>
-              <div>
-                <div className="text-[11px] text-muted-foreground">Worst area</div>
-                <div className="font-medium text-foreground truncate" title={maxLoc.location}>{maxLoc.location}</div>
-                <div className="text-[11px]">AQI {maxLoc.aqi}</div>
-              </div>
-            </div>
-            <div className="text-[11px]">Sample size: {locations.length} stations</div>
-          </div>
-        }
-      />
+      
 
       {/* Dominant Source */}
       <StatCard

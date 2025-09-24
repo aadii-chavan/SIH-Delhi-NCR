@@ -1,5 +1,4 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { AQICard } from "@/components/dashboard/AQICard";
 import { PollutionSourcesChart } from "@/components/dashboard/PollutionSourcesChart";
 import { AQIMap } from "@/components/dashboard/AQIMap";
 import { QuickStatsGrid } from "@/components/dashboard/QuickStatsGrid";
@@ -25,26 +24,13 @@ const Index = () => {
 
         {/* Main Dashboard Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          {/* Current AQI Card */}
-          <div className="xl:col-span-3">
-            <AQICard
-              aqi={currentAqi.aqi}
-              location="Delhi-NCR Average"
-              trend={{
-                change: airQualityData.quickStats.trend.change,
-                direction: airQualityData.quickStats.trend.direction,
-              }}
-              className="h-full"
-            />
-          </div>
-
           {/* Pollution Sources Chart */}
-          <div className="xl:col-span-5">
+          <div className="xl:col-span-7">
             <PollutionSourcesChart sources={currentAqi.sources} className="h-full" />
           </div>
 
           {/* AI Recommendation */}
-          <div className="xl:col-span-4">
+          <div className="xl:col-span-5">
             <RecommendationCard recommendation={recommendation} className="h-full" />
           </div>
         </div>
