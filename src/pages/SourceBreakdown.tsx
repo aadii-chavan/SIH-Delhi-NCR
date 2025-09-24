@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Filter, X } from "lucide-react";
+import { Download, Filter, X, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { airQualityData } from "@/data/airQualityData";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
@@ -22,6 +22,17 @@ const SourceBreakdown = () => {
   });
 
   const currentData = filteredData.length > 0 ? filteredData[0] : airQualityData.sourceBreakdown[0];
+
+  // Previous sample for same zone (closest earlier timestamp) for trend deltas
+  const zoneEntries = airQualityData.sourceBreakdown
+    .filter((it) => it.zone === currentData.zone)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const currentIdx = zoneEntries.findIndex((it) => it.timestamp === currentData.timestamp);
+  const prevData = currentIdx >= 0 ? zoneEntries[currentIdx + 1] : undefined;
+
+  const entriesSorted = Object.entries(currentData.sources).sort((a, b) => b[1] - a[1]);
+  const dominant = entriesSorted[0];
+  const top2Share = entriesSorted.slice(0, 2).reduce((sum, [, v]) => sum + (v as number), 0);
 
   const exportCSV = () => {
     const headers = ["Date", "Zone", "Stubble Burning (%)", "Traffic (%)", "Industrial (%)", "Other (%)"];
@@ -152,32 +163,66 @@ const SourceBreakdown = () => {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <PollutionSourcesChart sources={currentData.sources} />
           
-          {/* Source Details */}
+          {/* Source Details & Insights */}
           <Card className="card-gradient shadow-soft">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-foreground">Source Impact Analysis</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {Object.entries(currentData.sources).map(([source, percentage]) => (
-                  <div key={source} className="flex items-center justify-between p-3 bg-accent/30 rounded-lg">
-                    <div className="space-y-1">
-                      <h4 className="font-medium text-foreground capitalize">
-                        {source === "stubble" ? "Stubble Burning" : 
-                         source === "traffic" ? "Vehicle Traffic" :
-                         source === "industrial" ? "Industrial Emissions" : "Other Sources"}
-                      </h4>
-                      <p className="text-xs text-muted-foreground">
-                        {source === "stubble" ? "Agricultural waste burning in neighboring states" :
-                         source === "traffic" ? "Vehicle emissions from roads and highways" :
-                         source === "industrial" ? "Factories and industrial activities" : "Construction, dust, and other sources"}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-foreground">{percentage}%</div>
-                    </div>
+              {/* Summary header */}
+              <div className="mb-4 grid grid-cols-2 gap-3">
+                <div className="rounded-lg border p-3 bg-secondary/40">
+                  <div className="text-[11px] text-muted-foreground">Dominant Source</div>
+                  <div className="text-sm font-medium text-foreground">
+                    {dominant[0] === "stubble" ? "Stubble Burning" : dominant[0] === "traffic" ? "Vehicle Traffic" : dominant[0] === "industrial" ? "Industrial Emissions" : "Other Sources"}
                   </div>
-                ))}
+                  <div className="text-lg font-bold">{dominant[1]}%</div>
+                </div>
+                <div className="rounded-lg border p-3 bg-secondary/40">
+                  <div className="text-[11px] text-muted-foreground">Top-2 Share</div>
+                  <div className="text-lg font-bold text-foreground">{top2Share}%</div>
+                  <div className="text-[11px] text-muted-foreground">of total contribution</div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {Object.entries(currentData.sources).map(([source, percentage]) => {
+                  const prevPct = prevData?.sources?.[source as keyof typeof currentData.sources] ?? undefined;
+                  const delta = prevPct === undefined ? 0 : (percentage as number) - (prevPct as number);
+                  const up = delta > 0;
+                  const color = source === "stubble" ? "bg-orange-500" : source === "traffic" ? "bg-blue-500" : source === "industrial" ? "bg-red-500" : "bg-gray-500";
+                  const label = source === "stubble" ? "Stubble Burning" : source === "traffic" ? "Vehicle Traffic" : source === "industrial" ? "Industrial Emissions" : "Other Sources";
+                  const riskBadge = (percentage as number) >= 35 ? (
+                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">High</span>
+                  ) : (percentage as number) >= 25 ? (
+                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200">Elevated</span>
+                  ) : null;
+                  return (
+                    <div key={source} className="p-3 rounded-lg border bg-accent/30">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium text-foreground">
+                          <span className="capitalize">{label}</span>
+                          {riskBadge}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-bold">{percentage}%</span>
+                          {prevPct !== undefined && (
+                            <span className={`flex items-center text-xs ${up ? "text-red-600" : delta < 0 ? "text-green-600" : "text-muted-foreground"}`}>
+                              {delta === 0 ? null : up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                              {delta === 0 ? "No change" : `${up ? "+" : ""}${delta}% vs prev`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-2 h-2 w-full rounded bg-muted overflow-hidden">
+                        <div className={`h-full ${color}`} style={{ width: `${percentage}%` }} />
+                      </div>
+                      {prevPct !== undefined && (
+                        <div className="mt-1 text-[11px] text-muted-foreground">Prev: {prevPct}%</div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
