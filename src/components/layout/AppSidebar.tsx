@@ -2,6 +2,8 @@ import {
   Home, 
   PieChart, 
   TrendingUp, 
+  TrendingDown,
+  Minus,
   BarChart3, 
   FileText, 
   Settings,
@@ -22,6 +24,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
+import { airQualityData, getAQIStatus } from "@/data/airQualityData";
 
 type NavItem = { title: string; url: string; icon: any; badge?: string };
 
@@ -37,6 +41,12 @@ const navigationItems: NavItem[] = [
 export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
+
+  // Live AQI data for the sidebar card
+  const { aqi, timestamp } = airQualityData.currentAqi;
+  const zone = airQualityData.sourceBreakdown?.[0]?.zone ?? "Delhi-NCR";
+  const trend = airQualityData.quickStats?.trend;
+  const { status, color } = getAQIStatus(aqi);
 
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -93,18 +103,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Current AQI Widget in Sidebar */}
-        <div className="p-4 m-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border border-primary/10">
-          <div className="flex items-center gap-2 mb-2">
-            <MapPin className="w-4 h-4 text-primary" />
-            <span className="text-xs font-medium text-foreground">Live AQI</span>
-          </div>
-          <div className="space-y-1">
-            <div className="text-2xl font-bold text-foreground">250</div>
-            <div className="text-xs text-muted-foreground">Very Unhealthy</div>
-            <div className="text-xs text-primary font-medium">+10 from yesterday</div>
-          </div>
-        </div>
       </SidebarContent>
     </Sidebar>
   );
