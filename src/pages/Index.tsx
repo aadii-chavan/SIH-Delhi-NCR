@@ -2,7 +2,8 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PollutionSourcesChart } from "@/components/dashboard/PollutionSourcesChart";
 import { AQIMap } from "@/components/dashboard/AQIMap";
 import { QuickStatsGrid } from "@/components/dashboard/QuickStatsGrid";
-import { RecommendationCard } from "@/components/dashboard/RecommendationCard";
+// Removed RecommendationCard, replaced with ForecastSummaryCard
+import { ForecastSummaryCard } from "@/components/dashboard/ForecastSummaryCard";
 import { airQualityData } from "@/data/airQualityData";
 
 const Index = () => {
@@ -29,9 +30,9 @@ const Index = () => {
             <PollutionSourcesChart sources={currentAqi.sources} className="h-full" />
           </div>
 
-          {/* AI Recommendation */}
+          {/* 24h Forecast Summary */}
           <div className="xl:col-span-5">
-            <RecommendationCard recommendation={recommendation} className="h-full" />
+            <ForecastSummaryCard forecasts={airQualityData.forecasts.shortTerm} className="h-full" />
           </div>
         </div>
 
