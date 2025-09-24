@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Delhi-NCR Air Quality Dashboard Design System */
+
+@layer base {
+  :root {
+    /* Core colors for professional dashboard */
+    --background: 0 0% 99%;
+    --foreground: 224 71% 4%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 224 71% 4%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71% 4%;
+
+    /* Professional blue primary palette */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 98%;
+    --primary-muted: 217 91% 95%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 9% 46%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 217 78% 95%;
+    --accent-foreground: 217 91% 60%;
+
+    /* AQI Status Colors */
+    --aqi-good: 142 76% 36%;
+    --aqi-good-foreground: 0 0% 100%;
+    --aqi-moderate: 48 96% 53%;
+    --aqi-moderate-foreground: 26 83% 14%;
+    --aqi-unhealthy: 25 95% 53%;
+    --aqi-unhealthy-foreground: 0 0% 100%;
+    --aqi-severe: 0 84% 60%;
+    --aqi-severe-foreground: 0 0% 100%;
+
+    /* System colors */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.75rem;
+
+    /* Custom gradients */
+    --gradient-dashboard: linear-gradient(135deg, hsl(217 91% 60% / 0.1) 0%, hsl(217 91% 95%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%);
+    --gradient-aqi-good: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 76% 46%) 100%);
+    --gradient-aqi-moderate: linear-gradient(135deg, hsl(48 96% 53%) 0%, hsl(48 96% 63%) 100%);
+    --gradient-aqi-unhealthy: linear-gradient(135deg, hsl(25 95% 53%) 0%, hsl(25 95% 63%) 100%);
+    --gradient-aqi-severe: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(0 84% 70%) 100%);
+
+    /* Shadows */
+    --shadow-soft: 0 2px 8px hsl(220 13% 91% / 0.6);
+    --shadow-medium: 0 4px 16px hsl(220 13% 91% / 0.8);
+    --shadow-strong: 0 8px 32px hsl(220 13% 91% / 1);
+
+    /* Animation */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark mode for air quality dashboard */
+    --background: 224 71% 4%;
+    --foreground: 0 0% 98%;
+
+    --card: 224 71% 6%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 224 71% 6%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 217 91% 70%;
+    --primary-foreground: 224 71% 4%;
+
+    --secondary: 215 28% 17%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 215 28% 17%;
+    --muted-foreground: 217 10% 64%;
+
+    --accent: 215 28% 17%;
+    --accent-foreground: 217 91% 70%;
+
+    --border: 215 28% 17%;
+    --input: 215 28% 17%;
+    --ring: 217 91% 70%;
+
+    --sidebar-background: 224 71% 4%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 217 91% 70%;
+    --sidebar-primary-foreground: 224 71% 4%;
+    --sidebar-accent: 215 28% 17%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 215 28% 17%;
+    --sidebar-ring: 217 91% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Custom dashboard styles */
+  .dashboard-gradient {
+    background: var(--gradient-dashboard);
+  }
+
+  .card-gradient {
+    background: var(--gradient-card);
+  }
+
+  .aqi-good {
+    @apply bg-gradient-to-r from-green-500 to-green-600 text-white;
+  }
+
+  .aqi-moderate {
+    @apply bg-gradient-to-r from-yellow-500 to-yellow-600 text-yellow-900;
+  }
+
+  .aqi-unhealthy {
+    @apply bg-gradient-to-r from-orange-500 to-orange-600 text-white;
+  }
+
+  .aqi-severe {
+    @apply bg-gradient-to-r from-red-500 to-red-600 text-white;
+  }
+
+  .smooth-transition {
+    transition: var(--transition-smooth);
+  }
+}
