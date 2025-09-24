@@ -24,7 +24,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex-1 flex flex-col min-h-screen">
           {/* Header */}
           <header className="h-16 sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-            <div className="h-full px-4 flex items-center justify-between gap-3">
+            <div className="h-full px-4 flex items-center justify-between gap-3 max-w-7xl mx-auto w-full">
               <div className="flex items-center gap-3 flex-1">
                 <SidebarTrigger className="hover:bg-accent hover:text-accent-foreground rounded-lg" />
                 {/* Command/Search */}
@@ -59,12 +59,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* Main Content */}
           <main className="flex-1 p-4 lg:p-6 space-y-6 bg-background">
-            {children}
+            <div className="max-w-7xl mx-auto w-full">
+              {children}
+            </div>
           </main>
 
           {/* Footer */}
           <footer className="border-t border-border bg-background/60 backdrop-blur px-4 py-3">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center justify-between text-sm text-muted-foreground max-w-7xl mx-auto w-full">
               <div>Delhi-NCR Air Quality Dashboard</div>
               <div className="hidden sm:block">Updated {today}</div>
             </div>

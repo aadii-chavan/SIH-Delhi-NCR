@@ -52,9 +52,9 @@ export function AppSidebar() {
     cn(
       "group relative flex items-center gap-3 rounded-xl px-3.5 py-3 text-[14px] transition-colors",
       "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-      // Active state card with left accent bar like the reference UI
-      isActive &&
-        "bg-white text-foreground shadow-soft border border-sidebar-border before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r before:bg-primary",
+      isActive
+        ? "bg-white text-foreground shadow-[0_6px_16px_hsl(220_14%_60%_/_0.15)] border border-sidebar-border before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r before:bg-primary"
+        : "",
     );
 
   return (
