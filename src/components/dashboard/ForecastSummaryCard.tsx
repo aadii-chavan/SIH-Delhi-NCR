@@ -1,6 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Forecast } from "@/data/airQualityData";
 import { TrendingUp, TrendingDown, Clock, AlertTriangle, Activity } from "lucide-react";
+import {
+  Chart as ChartJS,
+  LineElement,
+  PointElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Filler,
+  ChartOptions,
+} from "chart.js";
+import { Line } from "react-chartjs-2";
+
+ChartJS.register(LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Filler);
 
 interface ForecastSummaryCardProps {
   title?: string;
@@ -92,35 +105,75 @@ export function ForecastSummaryCard({ title = "24h Forecast Summary", forecasts,
           <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded bg-red-500" /> 301–500</span>
         </div>
 
-        {/* Mini bar chart */}
-        <div className="mt-2">
-          <div className="flex items-end gap-2 h-28 p-3 rounded-lg border bg-accent/40">
-            {series.map((f, idx) => {
-              const color = f.aqi >= 400 ? "bg-red-600" : f.aqi >= 300 ? "bg-red-500" : f.aqi >= 200 ? "bg-orange-500" : f.aqi >= 100 ? "bg-yellow-500" : "bg-green-500";
-              const isPeak = f.time === peak.time;
-              return (
-                <div key={f.time + idx} className="flex flex-col items-center gap-2">
-                  <div
-                    className={`w-6 rounded-md ${color} ${isPeak ? "ring-2 ring-offset-1 ring-primary" : ""}`}
-                    style={{ height: `${normalize(f.aqi)}%` }}
-                    title={`${new Date(f.time).toLocaleTimeString([], { hour: "2-digit" })} — AQI ${f.aqi}`}
-                  />
-                  <div className="text-[10px] text-muted-foreground">
-                    {new Date(f.time).toLocaleTimeString([], { hour: "2-digit" })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
-            <span>0</span>
-            <span>100</span>
-            <span>200</span>
-            <span>300</span>
-            <span>400</span>
-            <span>500</span>
-          </div>
+        {/* Line chart (24h AQI trend) */}
+        <div className="relative h-40 rounded-lg border bg-accent/40 p-3">
+          <Line
+            data={{
+              labels: series.map((f) => new Date(f.time).toLocaleTimeString([], { hour: "2-digit" })),
+              datasets: [
+                {
+                  data: values,
+                  borderColor: "hsl(234 89% 64% / 0.9)",
+                  backgroundColor: (ctx) => {
+                    const { chart } = ctx;
+                    const { ctx: canvasCtx, chartArea } = chart as any;
+                    if (!chartArea) return "hsl(234 89% 64% / 0.15)";
+                    const gradient = canvasCtx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                    gradient.addColorStop(0, "hsl(234 89% 64% / 0.25)");
+                    gradient.addColorStop(1, "hsl(234 89% 64% / 0.02)");
+                    return gradient;
+                  },
+                  fill: true,
+                  tension: 0.35,
+                  pointRadius: 2,
+                  pointHoverRadius: 3,
+                  borderWidth: 2,
+                  segment: {
+                    borderColor: (ctx) => {
+                      const v = ctx.p1.parsed.y as number;
+                      if (v >= 400) return "#dc2626"; // red-600
+                      if (v >= 300) return "#ef4444"; // red-500
+                      if (v >= 200) return "#f97316"; // orange-500
+                      if (v >= 100) return "#f59e0b"; // yellow-500
+                      return "#10b981"; // green-500
+                    },
+                  },
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  backgroundColor: "hsl(224 71% 4% / 0.95)",
+                  titleColor: "#fff",
+                  bodyColor: "#fff",
+                  displayColors: false,
+                  callbacks: {
+                    title: (items) => `Time: ${items[0].label}`,
+                    label: (item) => `AQI ${item.parsed.y}`,
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  grid: { display: false },
+                  ticks: { color: "hsl(215 14% 35%)", font: { size: 10 } },
+                },
+                y: {
+                  min: 0,
+                  max: 500,
+                  grid: { color: "hsl(215 16% 90% / 0.6)" },
+                  ticks: { stepSize: 100, color: "hsl(215 14% 35%)", font: { size: 10 } },
+                },
+              },
+            } as ChartOptions<'line'>}
+          />
         </div>
+
+        
 
         {/* Actions/Notes */}
         <div className="grid grid-cols-2 gap-3 text-[12px]">
