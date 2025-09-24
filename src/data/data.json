@@ -1,0 +1,65 @@
+{
+  "dashboard": {
+    "currentAqi": {
+      "timestamp": "2025-09-23T12:00",
+      "aqi": 250,
+      "label": "Unhealthy",
+      "description": "AQI 201-300: Breathing discomfort for most people",
+      "sources": { "stubble": 40, "traffic": 30, "industrial": 20, "other": 10 }
+    },
+    "recommendation": { "id": 1, "text": "Ban construction in Zone X for 48 hours" },
+    "aqiLocations": [
+      { "lat": 28.6, "lon": 77.2, "aqi": 250, "location": "Connaught Place" },
+      { "lat": 28.7, "lon": 77.3, "aqi": 270, "location": "Noida Sector 18" },
+      { "lat": 28.5, "lon": 77.1, "aqi": 230, "location": "Gurgaon" }
+    ],
+    "quickStats": {
+      "trend": { "change": 10, "direction": "up", "previousAqi": 240 },
+      "dominantSource": "Stubble Burning: 40%",
+      "lastIntervention": "Odd-Even: AQI reduced by 15%"
+    }
+  },
+  "sourceBreakdown": [
+    {
+      "timestamp": "2025-09-23T12:00",
+      "zone": "Delhi Central",
+      "sources": { "stubble": 40, "traffic": 30, "industrial": 20, "other": 10 }
+    },
+    {
+      "timestamp": "2025-09-22T12:00",
+      "zone": "Noida",
+      "sources": { "stubble": 35, "traffic": 35, "industrial": 20, "other": 10 }
+    }
+  ],
+  "forecasts": {
+    "shortTerm": [
+      { "time": "2025-09-24T12:00", "aqi": 270, "zone": "Delhi Central" },
+      { "time": "2025-09-25T12:00", "aqi": 290, "zone": "Delhi Central" }
+    ],
+    "seasonal": {
+      "winter2025": { "avgAqi": 350, "zone": "All NCR" }
+    }
+  },
+  "interventions": [
+    {
+      "name": "Odd-Even",
+      "start": "2025-01-01",
+      "end": "2025-01-15",
+      "aqiBefore": 300,
+      "aqiAfter": 255
+    },
+    {
+      "name": "Firecracker Ban",
+      "start": "2025-11-01",
+      "end": "2025-11-07",
+      "aqiBefore": 400,
+      "aqiAfter": 320
+    }
+  ],
+  "recommendations": [
+    { "id": 1, "text": "Ban construction in Zone X for 48 hours" },
+    { "id": 2, "text": "Subsidize stubble removal in Haryana" }
+  ]
+}
+
+

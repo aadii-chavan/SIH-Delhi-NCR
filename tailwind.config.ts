@@ -81,7 +81,7 @@ export default {
         strong: "var(--shadow-strong)",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Plus Jakarta Sans", "Inter", "system-ui", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {
