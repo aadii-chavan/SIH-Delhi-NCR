@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Filter } from "lucide-react";
+import { Download, Filter, X } from "lucide-react";
 import { airQualityData } from "@/data/airQualityData";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 
 const SourceBreakdown = () => {
   const [selectedDate, setSelectedDate] = useState("2025-09-23");
@@ -57,47 +59,94 @@ const SourceBreakdown = () => {
           </Button>
         </div>
 
-        {/* Filters */}
-        <Card className="card-gradient shadow-soft">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Filter className="w-5 h-5" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Date</label>
-                <Select value={selectedDate} onValueChange={setSelectedDate}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select date" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Dates</SelectItem>
-                    <SelectItem value="2025-09-23">September 23, 2025</SelectItem>
-                    <SelectItem value="2025-09-22">September 22, 2025</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        {/* Compact Filters Toolbar */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm text-muted-foreground">
+            <span className="hidden sm:inline">Showing for</span>
+            <span className="sm:ml-1 font-medium text-foreground">
+              {selectedDate === "all" ? "All Dates" : selectedDate}
+            </span>
+            <span className="mx-1">·</span>
+            <span className="font-medium text-foreground">
+              {selectedZone === "all" ? "All Zones" : selectedZone}
+            </span>
+          </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">NCR Zone</label>
-                <Select value={selectedZone} onValueChange={setSelectedZone}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select zone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Zones</SelectItem>
-                    <SelectItem value="Delhi Central">Delhi Central</SelectItem>
-                    <SelectItem value="Noida">Noida</SelectItem>
-                    <SelectItem value="Gurgaon">Gurgaon</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="flex items-center gap-2">
+            {(selectedDate !== "all" || selectedZone !== "all") && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={() => {
+                  setSelectedDate("all");
+                  setSelectedZone("all");
+                }}
+                title="Clear filters"
+              >
+                <X className="w-3.5 h-3.5" />
+                Clear
+              </Button>
+            )}
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="default" size="sm" className="gap-2">
+                  <Filter className="w-4 h-4" />
+                  Filters
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80">
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1.5">Date</div>
+                    <Select value={selectedDate} onValueChange={setSelectedDate}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select date" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Dates</SelectItem>
+                        <SelectItem value="2025-09-23">September 23, 2025</SelectItem>
+                        <SelectItem value="2025-09-22">September 22, 2025</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1.5">NCR Zone</div>
+                    <Select value={selectedZone} onValueChange={setSelectedZone}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select zone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Zones</SelectItem>
+                        <SelectItem value="Delhi Central">Delhi Central</SelectItem>
+                        <SelectItem value="Noida">Noida</SelectItem>
+                        <SelectItem value="Gurgaon">Gurgaon</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-muted-foreground">Filters apply immediately</div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2"
+                      onClick={() => {
+                        setSelectedDate("all");
+                        setSelectedZone("all");
+                      }}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
 
         {/* Chart */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
