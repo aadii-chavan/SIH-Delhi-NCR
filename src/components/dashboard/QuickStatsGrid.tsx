@@ -27,8 +27,8 @@ function StatCard({ title, value, subtitle, trend, icon, details, className }: S
   };
 
   return (
-    <Card className={`card-gradient shadow-soft hover:shadow-medium smooth-transition aspect-square ${className}`}>
-      <CardContent className="p-4 h-full">
+    <Card className={`card-gradient shadow-soft hover:shadow-medium smooth-transition ${className}`}>
+      <CardContent className="p-4">
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="flex items-center justify-between">

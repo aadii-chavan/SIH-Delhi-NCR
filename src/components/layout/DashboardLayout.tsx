@@ -23,10 +23,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         
         <div className="flex-1 flex flex-col min-h-screen">
           {/* Header */}
-          <header className="h-16 sticky top-0 z-40 border-b border-border bg-card/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <header className="h-16 sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
             <div className="h-full px-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 flex-1">
-                <SidebarTrigger className="hover:bg-accent hover:text-accent-foreground" />
+                <SidebarTrigger className="hover:bg-accent hover:text-accent-foreground rounded-lg" />
                 {/* Command/Search */}
                 <div className="relative hidden md:block flex-1 max-w-xl">
                   <Input placeholder="Search or type a command" className="pl-9 pr-14 h-9 rounded-lg" />
@@ -63,7 +63,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </main>
 
           {/* Footer */}
-          <footer className="border-t border-border bg-card/30 px-4 py-3">
+          <footer className="border-t border-border bg-background/60 backdrop-blur px-4 py-3">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <div>Delhi-NCR Air Quality Dashboard</div>
               <div className="hidden sm:block">Updated {today}</div>
