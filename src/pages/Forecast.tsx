@@ -68,7 +68,7 @@ const Forecast = () => {
         borderColor: "hsl(217, 91%, 60%)",
         backgroundColor: "hsl(217, 91%, 60% / 0.1)",
         borderWidth: 3,
-        fill: true,
+        fill: false,
         tension: 0.4,
         pointBackgroundColor: "hsl(217, 91%, 60%)",
         pointBorderColor: "#ffffff",
