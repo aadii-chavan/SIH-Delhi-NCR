@@ -306,7 +306,7 @@ const InterventionAnalytics = () => {
         </Card>
 
         {/* Engagement + Interventions Table and Recommendations */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Citizen Engagement Reports */}
           <Card className="card-gradient shadow-soft">
             <CardHeader>
@@ -392,8 +392,8 @@ const InterventionAnalytics = () => {
             </CardContent>
           </Card>
 
-          {/* AI Recommendations */}
-          <RecommendationsList />
+          {/* AI Recommendations (full width) */}
+          <RecommendationsList className="w-full" />
         </div>
       </div>
     </DashboardLayout>
