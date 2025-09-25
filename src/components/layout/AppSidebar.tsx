@@ -80,7 +80,7 @@ export function AppSidebar() {
             <Wind className="w-4 h-4 text-primary-foreground" />
           </div>
           <div className="min-w-0">
-            <h2 className="font-semibold text-sm text-foreground">TailAQI</h2>
+            <h2 className="font-semibold text-sm text-foreground">Air Watch</h2>
             <p className="text-xs text-muted-foreground">Dashboard</p>
           </div>
         </div>
@@ -99,13 +99,13 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild tooltip={item.title}>
                     <NavLink to={item.url} end className={getNavClass} aria-label={item.title}>
                       <item.icon className="w-4 h-4 flex-shrink-0" />
-                      <span className="min-w-0 truncate">{item.title}</span>
+                      <span className="min-w-0 truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
                       {item.badge && (
                         <span className="ml-auto rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600">
                           {item.badge}
                         </span>
                       )}
-                      <ChevronDown className="ml-1 hidden sm:block w-4 h-4 text-muted-foreground/60" />
+                      <ChevronDown className="ml-1 hidden sm:block w-4 h-4 text-muted-foreground/60 group-data-[collapsible=icon]:hidden" />
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

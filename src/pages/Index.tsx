@@ -5,7 +5,7 @@ import { QuickStatsGrid } from "@/components/dashboard/QuickStatsGrid";
 // Removed RecommendationCard, replaced with ForecastSummaryCard
 import { ForecastSummaryCard } from "@/components/dashboard/ForecastSummaryCard";
 import { airQualityData } from "@/data/airQualityData";
-import { AQICard } from "@/components/dashboard/AQICard";
+// import { AQICard } from "@/components/dashboard/AQICard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAqiSimulation, ZoneKey } from "@/hooks/use-aqi-simulation";
 import { useLanguage } from "@/hooks/use-language";
@@ -85,11 +85,8 @@ const Index = () => {
             <div aria-live="polite" className="sr-only">{ariaLiveMessage}</div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
-              <AQICard aqi={aqi} location={`${t("current_aqi")} — ${zone}`} />
-            </div>
-            <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 gap-6">
+            <div className="col-span-1">
               <AQIMap locations={aqiLocations} center={center} />
             </div>
           </div>
