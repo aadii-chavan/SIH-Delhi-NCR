@@ -19,9 +19,8 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Fake auth; plug in API later
-      await new Promise((r) => setTimeout(r, 600));
-      login({ token: "demo" });
+      await new Promise((r) => setTimeout(r, 400));
+      await login({ email, password });
       navigate(from, { replace: true });
     } finally {
       setLoading(false);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,11 @@ import {
 } from "chart.js";
 import { TrendingUp, Calendar, Download, Clock } from "lucide-react";
 import { airQualityData, getAQIStatus } from "@/data/airQualityData";
+// Removed baseline AQI card
+import { useAqiSimulation } from "@/hooks/use-aqi-simulation";
+import { useAqiHistory } from "@/hooks/use-aqi-history";
+import { AQITrendChart } from "@/components/dashboard/AQITrendChart";
+import { useLanguage } from "@/hooks/use-language";
 
 ChartJS.register(
   CategoryScale,
@@ -31,9 +36,15 @@ ChartJS.register(
 
 const Forecast = () => {
   const [activeTab, setActiveTab] = useState("short-term");
+  const { aqi, zone } = useAqiSimulation("Delhi");
+  const { timeRange, setTimeRange, points } = useAqiHistory(zone, aqi);
+  const { t } = useLanguage();
+  const ariaLiveMessage = useMemo(() => `${t("baseline")}: ${t("aqi")} ${aqi}`, [aqi, t]);
   
   const shortTermData = airQualityData.forecasts.shortTerm;
   const seasonalData = airQualityData.forecasts.seasonal;
+  const [windAdj, setWindAdj] = useState([0]);
+  const [tempInvAdj, setTempInvAdj] = useState([0]);
 
   // Prepare chart data
   const chartData = {
@@ -47,8 +58,13 @@ const Forecast = () => {
     }),
     datasets: [
       {
-        label: "AQI Forecast",
-        data: shortTermData.map(item => item.aqi),
+        label: "AQI Forecast (Sensitivity)",
+        data: shortTermData.map(item => {
+          const base = item.aqi;
+          const windFactor = 1 + windAdj[0] / 100;
+          const tempFactor = 1 + tempInvAdj[0] / 100;
+          return Math.round(base * windFactor * tempFactor);
+        }),
         borderColor: "hsl(217, 91%, 60%)",
         backgroundColor: "hsl(217, 91%, 60% / 0.1)",
         borderWidth: 3,
@@ -136,7 +152,7 @@ const Forecast = () => {
         {/* Page Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">AQI Forecast</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("forecast_title")}</h1>
             <p className="text-muted-foreground">Short-term and seasonal air quality predictions for Delhi-NCR</p>
           </div>
           <Button onClick={exportForecast} className="flex items-center gap-2">
@@ -144,6 +160,10 @@ const Forecast = () => {
             Export Forecasts
           </Button>
         </div>
+
+        <div aria-live="polite" className="sr-only">{ariaLiveMessage}</div>
+
+        {/* Baseline section removed */}
 
         {/* Forecast Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -262,9 +282,22 @@ const Forecast = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm font-medium text-foreground mb-1">Wind speed impact: {windAdj[0]}%</div>
+                      <input type="range" min={-20} max={20} step={5} value={windAdj[0]} onChange={(e) => setWindAdj([parseInt(e.target.value)])} className="w-full" />
+                      <div className="text-xs text-muted-foreground">Adjust wind influence on AQI</div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-foreground mb-1">Temperature inversion impact: {tempInvAdj[0]}%</div>
+                      <input type="range" min={-20} max={20} step={5} value={tempInvAdj[0]} onChange={(e) => setTempInvAdj([parseInt(e.target.value)])} className="w-full" />
+                      <div className="text-xs text-muted-foreground">Adjust inversion influence on AQI</div>
+                    </div>
+                  </div>
+
                   <div className="text-center p-6 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg">
                     <h3 className="text-3xl font-bold text-red-600 mb-2">
-                      {seasonalData.winter2025.avgAqi}
+                      {Math.round(seasonalData.winter2025.avgAqi * (1 + windAdj[0]/100) * (1 + tempInvAdj[0]/100))}
                     </h3>
                     <p className="text-red-800 font-medium">Average Winter AQI</p>
                     <p className="text-sm text-red-600 mt-2">Hazardous air quality expected</p>
@@ -276,7 +309,7 @@ const Forecast = () => {
                         <CardContent className="p-4 text-center">
                           <div className="space-y-2">
                             <p className="text-sm font-medium text-foreground">{month.month}</p>
-                            <p className="text-2xl font-bold text-foreground">{month.avgAqi}</p>
+                            <p className="text-2xl font-bold text-foreground">{Math.round(month.avgAqi * (1 + windAdj[0]/100) * (1 + tempInvAdj[0]/100))}</p>
                             <p className="text-xs text-muted-foreground">
                               {getAQIStatus(month.avgAqi).status}
                             </p>
@@ -284,6 +317,15 @@ const Forecast = () => {
                         </CardContent>
                       </Card>
                     ))}
+                  </div>
+
+                  <div className="mt-2 grid grid-cols-12 gap-1">
+                    {Array.from({ length: 36 }).map((_, idx) => {
+                      const base = 200 + (idx % 12) * 5;
+                      const val = Math.round(base * (1 + windAdj[0]/100) * (1 + tempInvAdj[0]/100));
+                      const color = val > 300 ? "bg-red-500" : val > 250 ? "bg-orange-500" : val > 200 ? "bg-yellow-500" : "bg-green-500";
+                      return <div key={idx} className={`h-6 ${color}`} title={`AQI ${val}`}></div>;
+                    })}
                   </div>
 
                   <div className="p-4 bg-blue-50 rounded-lg">
@@ -300,6 +342,14 @@ const Forecast = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Historical context trend moved to bottom */}
+        <AQITrendChart
+          points={points}
+          timeRange={timeRange}
+          onTimeRangeChange={setTimeRange}
+          title="Recent History"
+        />
       </div>
     </DashboardLayout>
   );

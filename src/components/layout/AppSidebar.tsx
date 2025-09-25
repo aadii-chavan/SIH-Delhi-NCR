@@ -9,9 +9,11 @@ import {
   Settings,
   Wind,
   MapPin,
-  ChevronDown
+  ChevronDown,
+  Shield
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 import {
@@ -26,10 +28,11 @@ import {
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { airQualityData, getAQIStatus } from "@/data/airQualityData";
+import { useAuth } from "@/hooks/use-auth";
 
 type NavItem = { title: string; url: string; icon: any; badge?: string };
 
-const navigationItems: NavItem[] = [
+const baseItems: NavItem[] = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Source Breakdown", url: "/sources", icon: PieChart },
   { title: "Forecast", url: "/forecast", icon: TrendingUp },
@@ -41,6 +44,14 @@ const navigationItems: NavItem[] = [
 export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { isPolicymaker } = useAuth();
+  const navigationItems: NavItem[] = useMemo(() => {
+    const items = [...baseItems];
+    if (isPolicymaker) {
+      items.splice(1, 0, { title: "Policy Dashboard", url: "/policy", icon: Shield });
+    }
+    return items;
+  }, [isPolicymaker]);
 
   // Live AQI data for the sidebar card
   const { aqi, timestamp } = airQualityData.currentAqi;

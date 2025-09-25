@@ -2,6 +2,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Bar } from "react-chartjs-2";
 import { 
@@ -17,7 +18,7 @@ import {
 import { BarChart3, Download, Settings, Lightbulb, TrendingDown } from "lucide-react";
 import { airQualityData } from "@/data/airQualityData";
 import { RecommendationsList } from "@/components/dashboard/RecommendationCard";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 ChartJS.register(
   CategoryScale,
@@ -34,6 +35,8 @@ const InterventionAnalytics = () => {
   const [industrialReduction, setIndustrialReduction] = useState([10]);
 
   const interventions = airQualityData.interventions;
+  const [selectedIntervention, setSelectedIntervention] = useState<string | "all">("all");
+  const [durationSim, setDurationSim] = useState([0]);
 
   // Calculate what-if scenarios
   const currentAQI = 250;
@@ -41,19 +44,40 @@ const InterventionAnalytics = () => {
   const projectedAQI = Math.max(currentAQI - estimatedImpact, 50);
 
   // Prepare chart data
+  const filteredInterventions = useMemo(() => (
+    selectedIntervention === "all"
+      ? interventions
+      : interventions.filter(i => i.name === selectedIntervention)
+  ), [interventions, selectedIntervention]);
+  const [zone, setZone] = useState("Delhi Central");
+  const [reports, setReports] = useState([
+    { user: "citizen1", issue: "Smoke in Karol Bagh", zone: "Delhi Central" },
+    { user: "citizen2", issue: "Traffic congestion smog", zone: "Gurgaon" },
+    { user: "citizen3", issue: "Industrial odor near plant", zone: "Noida" },
+  ]);
+  const [viewCount, setViewCount] = useState(1200);
+  useEffect(() => {
+    const id = setInterval(() => setViewCount((v) => v + Math.floor(Math.random() * 5)), 4000);
+    return () => clearInterval(id);
+  }, []);
+
   const chartData = {
-    labels: interventions.map(intervention => intervention.name),
+    labels: filteredInterventions.map(intervention => intervention.name),
     datasets: [
       {
         label: "AQI Before",
-        data: interventions.map(intervention => intervention.aqiBefore),
+        data: filteredInterventions.map(intervention => intervention.aqiBefore),
         backgroundColor: "hsl(0, 84%, 60% / 0.7)",
         borderColor: "hsl(0, 84%, 60%)",
         borderWidth: 1,
       },
       {
-        label: "AQI After",
-        data: interventions.map(intervention => intervention.aqiAfter),
+        label: "AQI After (Simulated)",
+        data: filteredInterventions.map(intervention => {
+          // Required formula: newAQI = aqiAfter * (1 - sliderValue * 0.1)
+          const factor = 1 - (durationSim[0] * 0.1);
+          return Math.round(intervention.aqiAfter * Math.max(0, factor));
+        }),
         backgroundColor: "hsl(142, 76%, 36% / 0.7)",
         borderColor: "hsl(142, 76%, 36%)",
         borderWidth: 1,
@@ -105,15 +129,17 @@ const InterventionAnalytics = () => {
   };
 
   const exportAnalytics = () => {
-    const headers = ["Intervention", "Start Date", "End Date", "AQI Before", "AQI After", "Impact (%)", "Description"];
-    const rows = interventions.map(item => [
+    const headers = ["Intervention", "Start Date", "End Date", "AQI Before", "AQI After", "Impact (%)", "Description", "Sim_ProjectAQI", "DurationSim"];
+    const rows = filteredInterventions.map(item => [
       item.name,
       item.start,
       item.end,
       item.aqiBefore,
-      item.aqiAfter,
+      Math.round(item.aqiAfter * Math.max(0, 1 - durationSim[0] * 0.1)),
       item.impact,
-      item.description
+      item.description,
+      projectedAQI.toFixed(0),
+      durationSim[0]
     ]);
     
     const csvContent = [headers, ...rows].map(row => row.join(",")).join("\n");
@@ -135,10 +161,23 @@ const InterventionAnalytics = () => {
             <h1 className="text-2xl font-bold text-foreground">Intervention Analytics</h1>
             <p className="text-muted-foreground">Analyze past intervention effectiveness and simulate future scenarios</p>
           </div>
-          <Button onClick={exportAnalytics} className="flex items-center gap-2">
-            <Download className="w-4 h-4" />
-            Export Analytics
-          </Button>
+          <div className="flex items-center gap-3">
+            <Select value={selectedIntervention} onValueChange={(v) => setSelectedIntervention(v as any)}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter intervention" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All interventions</SelectItem>
+                {interventions.map(i => (
+                  <SelectItem key={i.name} value={i.name}>{i.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={exportAnalytics} className="flex items-center gap-2">
+              <Download className="w-4 h-4" />
+              Export Analytics
+            </Button>
+          </div>
         </div>
 
         {/* Intervention Effectiveness Chart */}
@@ -168,6 +207,21 @@ const InterventionAnalytics = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Sliders */}
               <div className="space-y-6">
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-foreground">
+                    Extend Ban by Days: {durationSim[0]}
+                  </label>
+                  <Slider
+                    value={durationSim}
+                    onValueChange={setDurationSim}
+                    max={5}
+                    step={1}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Formula: newAQI = aqiAfter * (1 - days * 0.1)
+                  </p>
+                </div>
                 <div className="space-y-3">
                   <label className="text-sm font-medium text-foreground">
                     Reduce Stubble Burning: {stubbleReduction[0]}%
@@ -251,8 +305,49 @@ const InterventionAnalytics = () => {
           </CardContent>
         </Card>
 
-        {/* Interventions Table and Recommendations */}
+        {/* Engagement + Interventions Table and Recommendations */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Citizen Engagement Reports */}
+          <Card className="card-gradient shadow-soft">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-foreground">Community Reports</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xs text-muted-foreground">Zone</div>
+                <Select value={zone} onValueChange={setZone}>
+                  <SelectTrigger className="w-44 h-8">
+                    <SelectValue placeholder="Select zone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Delhi Central">Delhi Central</SelectItem>
+                    <SelectItem value="Noida">Noida</SelectItem>
+                    <SelectItem value="Gurgaon">Gurgaon</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="mb-3 text-sm">Alert views: <span className="font-semibold">{viewCount.toLocaleString()}</span></div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Issue</TableHead>
+                    <TableHead>Zone</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reports.filter(r => r.zone === zone).map((r, i) => (
+                    <TableRow key={i}>
+                      <TableCell>{r.user}</TableCell>
+                      <TableCell>{r.issue}</TableCell>
+                      <TableCell>{r.zone}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
           {/* Historical Interventions */}
           <Card className="card-gradient shadow-soft">
             <CardHeader>

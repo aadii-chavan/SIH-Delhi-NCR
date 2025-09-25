@@ -12,6 +12,8 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { LanguageProvider } from "@/hooks/use-language";
+import PolicyDashboard from "@/pages/PolicyDashboard";
 
 const queryClient = new QueryClient();
 
@@ -24,13 +26,26 @@ const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
   return children;
 };
 
+const PolicyRoute = ({ children }: { children: React.ReactElement }) => {
+  const { isAuthenticated, isPolicymaker } = useAuth();
+  const location = useLocation();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+  if (!isPolicymaker) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <AuthProvider>
-        <BrowserRouter>
+        <LanguageProvider>
+          <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route
@@ -39,6 +54,14 @@ const App = () => (
                 <ProtectedRoute>
                   <Index />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/policy"
+              element={
+                <PolicyRoute>
+                  <PolicyDashboard />
+                </PolicyRoute>
               }
             />
             <Route
@@ -91,7 +114,8 @@ const App = () => (
               }
             />
           </Routes>
-        </BrowserRouter>
+          </BrowserRouter>
+        </LanguageProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

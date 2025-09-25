@@ -1,18 +1,28 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PollutionSourcesChart } from "@/components/dashboard/PollutionSourcesChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, Filter, X, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { airQualityData } from "@/data/airQualityData";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { AQICard } from "@/components/dashboard/AQICard";
+import { useAqiSimulation, ZoneKey } from "@/hooks/use-aqi-simulation";
+import { useSourceShift } from "@/hooks/use-source-shift";
+import { SankeyDiagram } from "@/components/dashboard/SankeyDiagram";
 
 const SourceBreakdown = () => {
   const [selectedDate, setSelectedDate] = useState("2025-09-23");
   const [selectedZone, setSelectedZone] = useState("all");
+  const [windFactor, setWindFactor] = useState([0]);
+  const [stubbleScenario, setStubbleScenario] = useState([0]);
+  const [scenarioApplied, setScenarioApplied] = useState(false);
+  const { aqi, zone, setZone } = useAqiSimulation("Delhi");
+  const ariaLiveMessage = useMemo(() => `AQI ${aqi}, Zone: ${zone}`, [aqi, zone]);
 
   // Filter data based on selections
   const filteredData = airQualityData.sourceBreakdown.filter((item) => {
@@ -22,6 +32,37 @@ const SourceBreakdown = () => {
   });
 
   const currentData = filteredData.length > 0 ? filteredData[0] : airQualityData.sourceBreakdown[0];
+
+  const adjustedSources = useMemo(() => {
+    const base = { ...currentData.sources } as typeof currentData.sources;
+    // Apply wind factor as a mock redistribution (higher wind reduces local traffic share slightly)
+    const wind = windFactor[0];
+    const trafficAdj = Math.max(0, base.traffic - Math.round(wind * 0.5));
+    const stubbleAdj = Math.max(0, base.stubble - Math.round(stubbleScenario[0]));
+    let residual = base.traffic - trafficAdj + base.stubble - stubbleAdj;
+    const industrialAdj = Math.min(100, base.industrial + Math.round(residual * 0.4));
+    const otherAdj = Math.min(100, base.other + Math.round(residual * 0.6));
+    const total = stubbleAdj + trafficAdj + industrialAdj + otherAdj;
+    // Normalize to 100
+    return {
+      stubble: Math.round((stubbleAdj / total) * 100),
+      traffic: Math.round((trafficAdj / total) * 100),
+      industrial: Math.round((industrialAdj / total) * 100),
+      other: 100 - Math.round((stubbleAdj / total) * 100) - Math.round((trafficAdj / total) * 100) - Math.round((industrialAdj / total) * 100),
+    };
+  }, [currentData.sources, windFactor, stubbleScenario]);
+
+  useEffect(() => {
+    if (scenarioApplied) {
+      localStorage.setItem("policy_scenario_sources", JSON.stringify({
+        date: selectedDate,
+        zone: selectedZone,
+        windFactor: windFactor[0],
+        stubbleReductionPct: stubbleScenario[0],
+        adjustedSources,
+      }));
+    }
+  }, [scenarioApplied, selectedDate, selectedZone, windFactor, stubbleScenario, adjustedSources]);
 
   // Previous sample for same zone (closest earlier timestamp) for trend deltas
   const zoneEntries = airQualityData.sourceBreakdown
@@ -125,7 +166,10 @@ const SourceBreakdown = () => {
 
                   <div>
                     <div className="text-xs text-muted-foreground mb-1.5">NCR Zone</div>
-                    <Select value={selectedZone} onValueChange={setSelectedZone}>
+                    <Select value={selectedZone} onValueChange={(v) => {
+                      setSelectedZone(v);
+                      if (v !== "all") setZone(v as ZoneKey);
+                    }}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select zone" />
                       </SelectTrigger>
@@ -159,9 +203,11 @@ const SourceBreakdown = () => {
           </div>
         </div>
 
+        <div aria-live="polite" className="sr-only">{ariaLiveMessage}</div>
+
         {/* Chart */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <PollutionSourcesChart sources={currentData.sources} />
+          <PollutionSourcesChart sources={useSourceShift(scenarioApplied ? adjustedSources : currentData.sources)} />
           
           {/* Source Details & Insights */}
           <Card className="card-gradient shadow-soft">
@@ -169,6 +215,10 @@ const SourceBreakdown = () => {
               <CardTitle className="text-lg font-semibold text-foreground">Source Impact Analysis</CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Current AQI card for context */}
+              <div className="mb-4">
+                <AQICard aqi={aqi} location={`Current AQI — ${zone}`} />
+              </div>
               {/* Summary header */}
               <div className="mb-4 grid grid-cols-2 gap-3">
                 <div className="rounded-lg border p-3 bg-secondary/40">
@@ -187,14 +237,15 @@ const SourceBreakdown = () => {
 
               <div className="space-y-3">
                 {Object.entries(currentData.sources).map(([source, percentage]) => {
+                  const effectivePct = scenarioApplied ? (adjustedSources as any)[source] : percentage;
                   const prevPct = prevData?.sources?.[source as keyof typeof currentData.sources] ?? undefined;
-                  const delta = prevPct === undefined ? 0 : (percentage as number) - (prevPct as number);
+                  const delta = prevPct === undefined ? 0 : (effectivePct as number) - (prevPct as number);
                   const up = delta > 0;
                   const color = source === "stubble" ? "bg-orange-500" : source === "traffic" ? "bg-blue-500" : source === "industrial" ? "bg-red-500" : "bg-gray-500";
                   const label = source === "stubble" ? "Stubble Burning" : source === "traffic" ? "Vehicle Traffic" : source === "industrial" ? "Industrial Emissions" : "Other Sources";
-                  const riskBadge = (percentage as number) >= 35 ? (
+                  const riskBadge = (effectivePct as number) >= 35 ? (
                     <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">High</span>
-                  ) : (percentage as number) >= 25 ? (
+                  ) : (effectivePct as number) >= 25 ? (
                     <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200">Elevated</span>
                   ) : null;
                   return (
@@ -205,7 +256,7 @@ const SourceBreakdown = () => {
                           {riskBadge}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold">{percentage}%</span>
+                          <span className="text-lg font-bold">{effectivePct}%</span>
                           {prevPct !== undefined && (
                             <span className={`flex items-center text-xs ${up ? "text-red-600" : delta < 0 ? "text-green-600" : "text-muted-foreground"}`}>
                               {delta === 0 ? null : up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
@@ -215,7 +266,7 @@ const SourceBreakdown = () => {
                         </div>
                       </div>
                       <div className="mt-2 h-2 w-full rounded bg-muted overflow-hidden">
-                        <div className={`h-full ${color}`} style={{ width: `${percentage}%` }} />
+                        <div className={`h-full ${color}`} style={{ width: `${effectivePct}%` }} />
                       </div>
                       {prevPct !== undefined && (
                         <div className="mt-1 text-[11px] text-muted-foreground">Prev: {prevPct}%</div>
@@ -227,6 +278,49 @@ const SourceBreakdown = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Sankey Diagram */}
+        <Card className="card-gradient shadow-soft">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-foreground">Source Flow (Scenario)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="w-full">
+              <SankeyDiagram
+                className="w-full h-[280px]"
+                sources={scenarioApplied ? adjustedSources : currentData.sources}
+                destinationLabel={selectedZone === "all" ? currentData.zone : selectedZone}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Scenario & Factors */}
+        <Card className="card-gradient shadow-soft">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-foreground">Scenario Modeling & Factors</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-foreground">Wind Speed Factor: {windFactor[0]}%</label>
+                <Slider value={windFactor} onValueChange={setWindFactor} step={5} max={40} />
+                <p className="text-xs text-muted-foreground">Higher wind disperses traffic-related pollution mock-reduction.</p>
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-foreground">Reduce Stubble by: {stubbleScenario[0]}%</label>
+                <Slider value={stubbleScenario} onValueChange={setStubbleScenario} step={5} max={50} />
+                <p className="text-xs text-muted-foreground">Scenario: policy to curb stubble burning.</p>
+              </div>
+              <div className="flex items-end gap-2">
+                <Button onClick={() => setScenarioApplied(true)} className="flex-1">Apply Scenario</Button>
+                <Button variant="outline" onClick={() => { setWindFactor([0]); setStubbleScenario([0]); setScenarioApplied(false); }}>
+                  Reset
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Data Table */}
         <Card className="card-gradient shadow-soft">
@@ -258,6 +352,11 @@ const SourceBreakdown = () => {
                 ))}
               </TableBody>
             </Table>
+            {scenarioApplied && (
+              <div className="mt-4 text-xs text-muted-foreground">
+                Export will include scenario context (wind/stubble adjustments).
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

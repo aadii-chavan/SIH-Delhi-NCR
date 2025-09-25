@@ -5,12 +5,14 @@ import { Bell, Calendar, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/use-auth";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const { user, logout, isPolicymaker } = useAuth();
   const today = useMemo(() => {
     const d = new Date();
     return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -51,8 +53,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 {/* Avatar */}
                 <Avatar className="size-8">
                   <AvatarImage src="" alt="User" />
-                  <AvatarFallback>AD</AvatarFallback>
+                  <AvatarFallback>{user?.email?.[0]?.toUpperCase() ?? "U"}</AvatarFallback>
                 </Avatar>
+                <div className="hidden md:flex flex-col items-start mr-2">
+                  <span className="text-xs text-muted-foreground">{user?.email ?? "Guest"}</span>
+                  {isPolicymaker && <span className="text-[10px] text-primary">Policymaker</span>}
+                </div>
+                <Button variant="outline" size="sm" onClick={logout}>Logout</Button>
               </div>
             </div>
           </header>

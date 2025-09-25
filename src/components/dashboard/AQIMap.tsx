@@ -3,15 +3,18 @@ import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAQIStatus, AQILocation } from "@/data/airQualityData";
 import "leaflet/dist/leaflet.css";
+import { useLanguage } from "@/hooks/use-language";
 
 interface AQIMapProps {
   locations: AQILocation[];
+  center?: [number, number];
   className?: string;
 }
 
-export function AQIMap({ locations, className }: AQIMapProps) {
-  // Center of Delhi-NCR
-  const center: [number, number] = [28.6139, 77.2090];
+export function AQIMap({ locations, className, center }: AQIMapProps) {
+  const { t } = useLanguage();
+  // Default center of Delhi-NCR
+  const defaultCenter: [number, number] = [28.6139, 77.2090];
 
   const getMarkerColor = (aqi: number) => {
     const { color } = getAQIStatus(aqi);
@@ -32,14 +35,14 @@ export function AQIMap({ locations, className }: AQIMapProps) {
     <Card className={`card-gradient shadow-soft hover:shadow-medium smooth-transition ${className}`}>
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
-          Hyperlocal AQI Map
-          <span className="text-sm font-normal text-muted-foreground">Delhi-NCR Region</span>
+          {t("hyperlocal_map")}
+          <span className="text-sm font-normal text-muted-foreground">{t("region_delhi_ncr")}</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="relative h-96 rounded-lg overflow-hidden border border-border">
           <MapContainer
-            center={center}
+            center={center ?? defaultCenter}
             zoom={10}
             style={{ height: "100%", width: "100%" }}
             className="rounded-lg"
@@ -71,11 +74,11 @@ export function AQIMap({ locations, className }: AQIMapProps) {
                       </h3>
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-600">AQI:</span>
+                          <span className="text-xs text-gray-600">{t("aqi")}:</span>
                           <span className="text-sm font-bold">{location.aqi}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-600">Status:</span>
+                          <span className="text-xs text-gray-600">{t("status")}:</span>
                           <span className="text-xs font-medium" style={{ color: getMarkerColor(location.aqi) }}>
                             {status}
                           </span>
@@ -93,19 +96,19 @@ export function AQIMap({ locations, className }: AQIMapProps) {
         <div className="mt-4 flex flex-wrap items-center gap-4 text-xs">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#10b981" }}></div>
-            <span className="text-muted-foreground">Good (0-50)</span>
+            <span className="text-muted-foreground">{t("good")} (0-50)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#f59e0b" }}></div>
-            <span className="text-muted-foreground">Moderate (51-100)</span>
+            <span className="text-muted-foreground">{t("moderate")} (51-100)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#f97316" }}></div>
-            <span className="text-muted-foreground">Unhealthy (101-200)</span>
+            <span className="text-muted-foreground">{t("unhealthy")} (101-200)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#ef4444" }}></div>
-            <span className="text-muted-foreground">Severe (201+)</span>
+            <span className="text-muted-foreground">{t("severe")} (201+)</span>
           </div>
         </div>
       </CardContent>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,15 @@ const Reports = () => {
   const [dateRange, setDateRange] = useState("last-week");
   const [location, setLocation] = useState("all");
 
+  const scenarioContext = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("policy_scenario_sources");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const getReportData = () => {
     switch (reportType) {
       case "sources":
@@ -22,6 +31,8 @@ const Reports = () => {
           traffic: item.sources.traffic,
           industrial: item.sources.industrial,
           other: item.sources.other,
+          scenario_windFactor: scenarioContext?.windFactor ?? "",
+          scenario_stubbleReductionPct: scenarioContext?.stubbleReductionPct ?? "",
         }));
       case "forecasts":
         return airQualityData.forecasts.shortTerm.map(item => ({
@@ -48,7 +59,10 @@ const Reports = () => {
     if (data.length === 0) return;
 
     const headers = Object.keys(data[0]);
+    const watermark = "FOR OFFICIAL USE ONLY";
     const csvContent = [
+      `# ${watermark}`,
+      `# Generated: ${new Date().toISOString()}`,
       headers.join(","),
       ...data.map(row => headers.map(header => row[header as keyof typeof row]).join(","))
     ].join("\n");
@@ -68,6 +82,7 @@ const Reports = () => {
     console.log("Exporting PDF with data:", data);
     
     // Create a simple text-based PDF content
+    const watermark = "FOR OFFICIAL USE ONLY";
     const pdfContent = `
 Delhi-NCR Air Quality Report
 Report Type: ${reportType}
@@ -78,6 +93,9 @@ Generated on: ${new Date().toLocaleString()}
 
 Data Summary:
 ${JSON.stringify(data, null, 2)}
+ 
+ Watermark: ${watermark}
+ Scenario: ${JSON.stringify(scenarioContext)}
     `;
 
     const blob = new Blob([pdfContent], { type: "text/plain" });
@@ -90,6 +108,21 @@ ${JSON.stringify(data, null, 2)}
   };
 
   const reportData = getReportData();
+
+  // Mock audit logs
+  const [auditUser, setAuditUser] = useState("all");
+  const [auditDate, setAuditDate] = useState("all");
+  const auditLogs = useMemo(() => ([
+    { user: "admin", action: "Viewed Sources", time: "2025-09-23T12:00" },
+    { user: "admin", action: "Exported Interventions", time: "2025-09-23T12:10" },
+    { user: "analyst", action: "Viewed Forecasts", time: "2025-09-22T09:30" },
+    { user: "admin", action: "Downloaded Reports", time: "2025-09-22T10:05" },
+  ]), []);
+  const filteredAudit = useMemo(() => auditLogs.filter(l => {
+    const matchesUser = auditUser === "all" || l.user === auditUser;
+    const matchesDate = auditDate === "all" || l.time.startsWith(auditDate);
+    return matchesUser && matchesDate;
+  }), [auditLogs, auditUser, auditDate]);
 
   return (
     <DashboardLayout>
@@ -253,6 +286,66 @@ ${JSON.stringify(data, null, 2)}
                 </p>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Audit Log */}
+        <Card className="card-gradient shadow-soft">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-foreground">Audit Log</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">User</label>
+                <Select value={auditUser} onValueChange={setAuditUser}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select user" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="admin">admin</SelectItem>
+                    <SelectItem value="analyst">analyst</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Date</label>
+                <Select value={auditDate} onValueChange={setAuditDate}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select date" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Dates</SelectItem>
+                    <SelectItem value="2025-09-23">2025-09-23</SelectItem>
+                    <SelectItem value="2025-09-22">2025-09-22</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button variant="outline" onClick={() => { setAuditUser("all"); setAuditDate("all"); }}>Reset</Button>
+              </div>
+            </div>
+            <div className="overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAudit.map((row, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{row.user}</TableCell>
+                      <TableCell>{row.action}</TableCell>
+                      <TableCell>{new Date(row.time).toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>
