@@ -23,6 +23,7 @@ import { useAqiSimulation } from "@/hooks/use-aqi-simulation";
 import { useAqiHistory } from "@/hooks/use-aqi-history";
 import { AQITrendChart } from "@/components/dashboard/AQITrendChart";
 import { useLanguage } from "@/hooks/use-language";
+import { useForecast } from "@/hooks/use-forecast";
 
 ChartJS.register(
   CategoryScale,
@@ -39,9 +40,15 @@ const Forecast = () => {
   const { aqi, zone } = useAqiSimulation("Delhi");
   const { timeRange, setTimeRange, points } = useAqiHistory(zone, aqi);
   const { t } = useLanguage();
+  const { forecastData, loading: forecastLoading, error: forecastError, lastUpdated } = useForecast("delhi", 5 * 60 * 1000); // refresh every 5 min
   const ariaLiveMessage = useMemo(() => `${t("baseline")}: ${t("aqi")} ${aqi}`, [aqi, t]);
-  
-  const shortTermData = airQualityData.forecasts.shortTerm;
+
+  // Use live forecast data for short-term, fallback to hardcoded if empty
+  const shortTermData = forecastData.length > 0 ? forecastData.slice(0, 8).map((item) => ({
+    time: item.time,
+    aqi: item.aqi,
+    zone: "Delhi Central"
+  })) : airQualityData.forecasts.shortTerm;
   const seasonalData = airQualityData.forecasts.seasonal;
   const [windAdj, setWindAdj] = useState([0]);
   const [tempInvAdj, setTempInvAdj] = useState([0]);

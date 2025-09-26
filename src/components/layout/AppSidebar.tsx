@@ -36,7 +36,7 @@ const baseItems: NavItem[] = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Source Breakdown", url: "/sources", icon: PieChart },
   { title: "Forecast", url: "/forecast", icon: TrendingUp },
-  { title: "Interventions", url: "/interventions", icon: BarChart3, badge: "NEW" },
+  { title: "Interventions", url: "/interventions", icon: BarChart3},
   { title: "Reports", url: "/reports", icon: FileText },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
