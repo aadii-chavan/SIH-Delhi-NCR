@@ -2,22 +2,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, ChartOptions, Chart, ActiveElement } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLiveSourceImpact } from "@/hooks/use-live-source-impact";
+import { useLiveAQI } from "@/hooks/use-live-aqi";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { RefreshCw, Activity, AlertCircle, Clock, MapPin } from "lucide-react";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-interface PollutionSourcesChartProps {
-  sources: {
-    stubble: number;
-    traffic: number;
-    industrial: number;
-    other: number;
-  };
-  className?: string;
-}
-
-export function PollutionSourcesChart({ sources, className }: PollutionSourcesChartProps) {
+export function PollutionSourcesChart({ className }: { className?: string }) {
+  const { sources, loading, error, refetch, lastUpdated } = useLiveSourceImpact("delhi");
+  const { data: liveAqi, loading: aqiLoading, error: aqiError, refetch: refetchAqi, lastUpdated: aqiLastUpdated } = useLiveAQI("delhi");
   const labels = ["Stubble Burning", "Vehicle Traffic", "Industrial", "Other Sources"];
-  const values = [sources.stubble, sources.traffic, sources.industrial, sources.other];
+  const values = sources ? [sources.stubble, sources.traffic, sources.industrial, sources.other] : [0, 0, 0, 0];
   const baseColors = [
     "hsl(25, 95%, 53%)", // stubble
     "hsl(217, 91%, 60%)", // traffic
@@ -128,28 +125,77 @@ export function PollutionSourcesChart({ sources, className }: PollutionSourcesCh
     },
   } as const;
 
+  const formatLastUpdated = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    if (diffInMinutes < 1) return "Just now";
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    return date.toLocaleDateString();
+  };
+
   return (
     <Card className={`card-gradient shadow-soft hover:shadow-medium smooth-transition ${className}`}>
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
           Source Impact Analysis (Delhi Only)
-          <span className="text-sm font-normal text-muted-foreground">(%)</span>
+          <span className="text-sm font-normal text-muted-foreground">(Live)</span>
         </CardTitle>
+        {/* Live AQI Value and Status */}
+        <div className="flex items-center gap-2 mt-2">
+          {aqiLoading && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1"><Activity className="w-3 h-3 animate-spin" /> Loading AQI...</span>
+          )}
+          {aqiError && (
+            <span className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> AQI Error</span>
+          )}
+          {liveAqi && (
+            <>
+              <span className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="w-3 h-3" /> Delhi</span>
+              <span className="text-2xl font-bold text-foreground">{liveAqi.aqi}</span>
+              <Badge className={`${liveAqi.color} px-2 py-1 text-xs font-medium`} variant="secondary">{liveAqi.status}</Badge>
+              {aqiLastUpdated && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" /> {formatLastUpdated(aqiLastUpdated)}</span>
+              )}
+              <Button variant="ghost" size="sm" onClick={refetchAqi} disabled={aqiLoading} className="h-6 w-6 p-0">
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          {lastUpdated && (
+            <span className="text-xs text-muted-foreground">Sources updated {formatLastUpdated(lastUpdated)}</span>
+          )}
+          <Button variant="ghost" size="sm" onClick={refetch} disabled={loading} className="h-6 w-6 p-0">
+            {loading ? <Activity className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
+        {error && (
+          <div className="text-red-600 text-sm mb-2">{error}</div>
+        )}
         <div className="relative h-80">
-          <Doughnut
-            data={chartData}
-            options={options}
-            plugins={[centerText]}
-            onMouseMove={(evt, elements) => {
-              const el = (elements as ActiveElement[])[0];
-              setActiveIndex(el ? el.index : null);
-            }}
-            onMouseLeave={() => setActiveIndex(null)}
-          />
+          {loading && !sources ? (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              <Activity className="w-8 h-8 animate-spin mr-2" /> Loading live source data...
+            </div>
+          ) : (
+            <Doughnut
+              data={chartData}
+              options={options}
+              plugins={[centerText]}
+              onMouseMove={(evt, elements) => {
+                const el = (elements as ActiveElement[])[0];
+                setActiveIndex(el ? el.index : null);
+              }}
+              onMouseLeave={() => setActiveIndex(null)}
+            />
+          )}
         </div>
-        
         {/* Interactive chips */}
         <div className="mt-4 flex flex-wrap gap-2">
           {labels.map((label, idx) => (
@@ -159,23 +205,25 @@ export function PollutionSourcesChart({ sources, className }: PollutionSourcesCh
               className={`px-2.5 py-1 rounded-full border text-xs smooth-transition ${activeIndex === idx ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-secondary-foreground"}`}
               onClick={() => setActiveIndex((prev) => (prev === idx ? null : idx))}
               aria-pressed={activeIndex === idx}
+              disabled={loading || !sources}
             >
               {label}: {values[idx]}%
             </button>
           ))}
         </div>
-
         {/* Key Insights */}
-        <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
-          <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-            <span className="text-orange-800 font-medium">Primary Source</span>
-            <span className="text-orange-600 font-bold">Stubble: {sources.stubble}%</span>
+        {sources && (
+          <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+              <span className="text-orange-800 font-medium">Primary Source</span>
+              <span className="text-orange-600 font-bold">Stubble: {sources.stubble}%</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+              <span className="text-blue-800 font-medium">Urban Impact</span>
+              <span className="text-blue-600 font-bold">Traffic: {sources.traffic}%</span>
+            </div>
           </div>
-          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-            <span className="text-blue-800 font-medium">Urban Impact</span>
-            <span className="text-blue-600 font-bold">Traffic: {sources.traffic}%</span>
-          </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

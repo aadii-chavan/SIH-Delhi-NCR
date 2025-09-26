@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, Minus, RefreshCw, AlertCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, RefreshCw, AlertCircle, Clock } from "lucide-react";
 import { useLiveAQI } from "@/hooks/use-live-aqi";
 import { Spinner } from "@/components/common/Spinner";
 
@@ -41,7 +41,6 @@ export function LiveAQICard({ city = "delhi", className }: LiveAQICardProps) {
     const date = new Date(timestamp);
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
     if (diffInMinutes < 1) return "Just now";
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     const diffInHours = Math.floor(diffInMinutes / 60);
@@ -52,9 +51,9 @@ export function LiveAQICard({ city = "delhi", className }: LiveAQICardProps) {
   if (error) {
     return (
       <Card className={`card-gradient shadow-soft hover:shadow-medium smooth-transition ${className}`}>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-            Live AQI - {city.charAt(0).toUpperCase() + city.slice(1)}
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <span>Current AQI — Delhi (Live)</span>
             <Button
               variant="ghost"
               size="sm"
@@ -80,30 +79,18 @@ export function LiveAQICard({ city = "delhi", className }: LiveAQICardProps) {
 
   return (
     <Card className={`card-gradient shadow-soft hover:shadow-medium smooth-transition ${className}`}>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-          Live AQI - {data?.location || city.charAt(0).toUpperCase() + city.slice(1)}
-          <div className="flex items-center gap-2">
-            {data?.trend && (
-              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${getTrendColor()}`}>
-                {getTrendIcon()}
-                {Math.abs(data.trend.change)}
-              </div>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={refetch}
-              disabled={loading}
-              className="h-6 w-6 p-0"
-            >
-              {loading ? (
-                <Spinner size="sm" />
-              ) : (
-                <RefreshCw className="w-3 h-3" />
-              )}
-            </Button>
-          </div>
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <span>Current AQI — Delhi (Live)</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={refetch}
+            disabled={loading}
+            className="h-6 w-6 p-0"
+          >
+            {loading ? <Spinner size="sm" /> : <RefreshCw className="w-3 h-3" />}
+          </Button>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -132,7 +119,8 @@ export function LiveAQICard({ city = "delhi", className }: LiveAQICardProps) {
 
           {/* Last Updated */}
           {lastUpdated && (
-            <div className="text-xs text-muted-foreground text-center">
+            <div className="text-xs text-muted-foreground text-center flex items-center gap-1 justify-center">
+              <Clock className="w-3 h-3" />
               Last updated: {formatLastUpdated(lastUpdated)}
             </div>
           )}

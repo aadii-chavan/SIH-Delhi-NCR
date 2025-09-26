@@ -215,10 +215,6 @@ const SourceBreakdown = () => {
               <CardTitle className="text-lg font-semibold text-foreground">Source Impact Analysis</CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Current AQI card for context */}
-              <div className="mb-4">
-                <AQICard aqi={aqi} location={`Current AQI — ${zone}`} />
-              </div>
               {/* Summary header */}
               <div className="mb-4 grid grid-cols-2 gap-3">
                 <div className="rounded-lg border p-3 bg-secondary/40">
