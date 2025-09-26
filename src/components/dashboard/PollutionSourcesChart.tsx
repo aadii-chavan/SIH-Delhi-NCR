@@ -132,7 +132,7 @@ export function PollutionSourcesChart({ sources, className }: PollutionSourcesCh
     <Card className={`card-gradient shadow-soft hover:shadow-medium smooth-transition ${className}`}>
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
-          Pollution Sources Breakdown
+          Source Impact Analysis (Delhi Only)
           <span className="text-sm font-normal text-muted-foreground">(%)</span>
         </CardTitle>
       </CardHeader>

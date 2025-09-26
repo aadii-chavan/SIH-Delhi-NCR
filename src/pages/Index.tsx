@@ -20,7 +20,15 @@ const Index = () => {
 
   const ariaLiveMessage = useMemo(() => `${t("aqi")} ${aqi}, ${t("zone")}: ${zone}`, [aqi, t, zone]);
 
-  // Map simulation zone to dataset zone label
+  // Always use Delhi Central for source impact analysis
+  const delhiSourceEntry = useMemo(() => {
+    return airQualityData.sourceBreakdown
+      .filter((it) => it.zone === "Delhi Central")
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+  }, []);
+  const delhiSources = useSourceShift(delhiSourceEntry?.sources ?? currentAqi.sources);
+
+  // Map simulation zone to dataset zone label (for other uses)
   const datasetZone = zone === "Delhi" ? "Delhi Central" : zone;
   const latestZoneEntry = useMemo(() => {
     return airQualityData.sourceBreakdown
@@ -52,9 +60,9 @@ const Index = () => {
 
         {/* Main Dashboard Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          {/* Pollution Sources Chart */}
+          {/* Pollution Sources Chart (Delhi Only) */}
           <div className="xl:col-span-7">
-            <PollutionSourcesChart sources={shiftedSources} className="h-full" />
+            <PollutionSourcesChart sources={delhiSources} className="h-full" />
           </div>
 
           {/* 24h Live Forecast Summary */}
