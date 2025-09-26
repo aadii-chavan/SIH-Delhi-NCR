@@ -16,7 +16,7 @@ import {
   Legend, 
   ChartOptions 
 } from "chart.js";
-import { TrendingUp, Calendar, Download, Clock } from "lucide-react";
+import { TrendingUp, Calendar, Download, Clock, Gauge } from "lucide-react";
 import { airQualityData, getAQIStatus } from "@/data/airQualityData";
 // Removed baseline AQI card
 import { useAqiSimulation } from "@/hooks/use-aqi-simulation";
@@ -244,11 +244,10 @@ const Forecast = () => {
               <Card className="card-gradient shadow-soft">
                 <CardContent className="p-4 text-center">
                   <div className="space-y-2">
+                    <Clock className="mx-auto w-7 h-7 text-blue-500 mb-1" />
                     <p className="text-sm text-muted-foreground">24hr Average</p>
-                    <p className="text-2xl font-bold text-foreground">
-                      {avg24hr}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Very Unhealthy</p>
+                    <p className="text-2xl font-bold text-foreground">{avg24hr}</p>
+                    <p className="text-xs text-muted-foreground">{getAQIStatus(avg24hr).status}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -256,10 +255,9 @@ const Forecast = () => {
               <Card className="card-gradient shadow-soft">
                 <CardContent className="p-4 text-center">
                   <div className="space-y-2">
+                    <Gauge className="mx-auto w-7 h-7 text-red-500 mb-1" />
                     <p className="text-sm text-muted-foreground">Peak AQI</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      {peakAqi}
-                    </p>
+                    <p className="text-2xl font-bold text-red-600">{peakAqi}</p>
                     <p className="text-xs text-muted-foreground">Expected {peakTime}</p>
                   </div>
                 </CardContent>
@@ -268,6 +266,7 @@ const Forecast = () => {
               <Card className="card-gradient shadow-soft">
                 <CardContent className="p-4 text-center">
                   <div className="space-y-2">
+                    <TrendingUp className="mx-auto w-7 h-7 text-green-600 mb-1" />
                     <p className="text-sm text-muted-foreground">Improvement Expected</p>
                     {improvementTime ? (
                       <>
