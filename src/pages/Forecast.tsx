@@ -44,7 +44,7 @@ const Forecast = () => {
   const ariaLiveMessage = useMemo(() => `${t("baseline")}: ${t("aqi")} ${aqi}`, [aqi, t]);
 
   // Use live forecast data for short-term, fallback to hardcoded if empty
-  const shortTermData = forecastData.length > 0 ? forecastData.slice(0, 8).map((item) => ({
+  const shortTermData = forecastData.length > 0 ? forecastData.map((item) => ({
     time: item.time,
     aqi: item.aqi,
     zone: "Delhi Central"
@@ -153,6 +153,14 @@ const Forecast = () => {
     URL.revokeObjectURL(url);
   };
 
+  // In summary cards, use first 24 hours for 24hr average if available
+  const avg24hr = shortTermData.length >= 24
+    ? Math.round(shortTermData.slice(0, 24).reduce((sum, item) => sum + item.aqi, 0) / 24)
+    : Math.round(shortTermData.slice(0, 4).reduce((sum, item) => sum + item.aqi, 0) / 4);
+  const peakAqi = shortTermData.length > 0
+    ? Math.max(...shortTermData.map(item => item.aqi))
+    : 0;
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -208,7 +216,7 @@ const Forecast = () => {
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">24hr Average</p>
                     <p className="text-2xl font-bold text-foreground">
-                      {Math.round(shortTermData.slice(0, 4).reduce((sum, item) => sum + item.aqi, 0) / 4)}
+                      {avg24hr}
                     </p>
                     <p className="text-xs text-muted-foreground">Very Unhealthy</p>
                   </div>
@@ -220,7 +228,7 @@ const Forecast = () => {
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">Peak AQI</p>
                     <p className="text-2xl font-bold text-red-600">
-                      {Math.max(...shortTermData.map(item => item.aqi))}
+                      {peakAqi}
                     </p>
                     <p className="text-xs text-muted-foreground">Expected Tomorrow</p>
                   </div>
