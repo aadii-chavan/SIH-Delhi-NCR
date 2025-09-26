@@ -31,6 +31,7 @@ interface UseLiveAQIResult {
   error: string | null;
   refetch: () => void;
   lastUpdated: string | null;
+  trendHistory: number[];
 }
 
 // Helper function to get AQI status and color
@@ -49,6 +50,7 @@ export const useLiveAQI = (city: string = 'delhi', refreshInterval: number = 300
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [previousAQI, setPreviousAQI] = useState<number | null>(null);
+  const [trendHistory, setTrendHistory] = useState<number[]>([]);
 
   const fetchAQIData = useCallback(async () => {
     try {
@@ -98,6 +100,12 @@ export const useLiveAQI = (city: string = 'delhi', refreshInterval: number = 300
       setPreviousAQI(result.data.aqi);
       setLastUpdated(new Date().toISOString());
       
+      // Update trend history (keep last 10 readings)
+      setTrendHistory(prev => {
+        const newHistory = [...prev, result.data.aqi];
+        return newHistory.slice(-10);
+      });
+      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch AQI data';
       setError(errorMessage);
@@ -126,6 +134,7 @@ export const useLiveAQI = (city: string = 'delhi', refreshInterval: number = 300
     loading,
     error,
     refetch,
-    lastUpdated
+    lastUpdated,
+    trendHistory
   };
 };
