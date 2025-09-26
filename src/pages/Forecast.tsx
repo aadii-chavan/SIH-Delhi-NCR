@@ -53,6 +53,44 @@ const Forecast = () => {
   const [windAdj, setWindAdj] = useState([0]);
   const [tempInvAdj, setTempInvAdj] = useState([0]);
 
+  // 24hr Average
+  const avg24hr = shortTermData.length >= 24
+    ? Math.round(shortTermData.slice(0, 24).reduce((sum, item) => sum + item.aqi, 0) / 24)
+    : Math.round(shortTermData.reduce((sum, item) => sum + item.aqi, 0) / (shortTermData.length || 1));
+
+  // Peak AQI and when it is expected
+  let peakAqi = 0;
+  let peakTime = '';
+  if (shortTermData.length > 0) {
+    const peak = shortTermData.reduce((max, item) => item.aqi > max.aqi ? item : max, shortTermData[0]);
+    peakAqi = peak.aqi;
+    peakTime = new Date(peak.time).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  // Improvement Expected: first time AQI drops by at least 10% after the peak
+  let improvementTime = '';
+  let improvementAqi = null;
+  if (shortTermData.length > 0 && peakAqi > 0) {
+    const peakIdx = shortTermData.findIndex(item => item.aqi === peakAqi);
+    for (let i = peakIdx + 1; i < shortTermData.length; i++) {
+      if (shortTermData[i].aqi <= peakAqi * 0.9) {
+        improvementTime = new Date(shortTermData[i].time).toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+        improvementAqi = shortTermData[i].aqi;
+        break;
+      }
+    }
+  }
+
   // Prepare chart data
   const chartData = {
     labels: shortTermData.map(item => {
@@ -153,14 +191,6 @@ const Forecast = () => {
     URL.revokeObjectURL(url);
   };
 
-  // In summary cards, use first 24 hours for 24hr average if available
-  const avg24hr = shortTermData.length >= 24
-    ? Math.round(shortTermData.slice(0, 24).reduce((sum, item) => sum + item.aqi, 0) / 24)
-    : Math.round(shortTermData.slice(0, 4).reduce((sum, item) => sum + item.aqi, 0) / 4);
-  const peakAqi = shortTermData.length > 0
-    ? Math.max(...shortTermData.map(item => item.aqi))
-    : 0;
-
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -230,7 +260,7 @@ const Forecast = () => {
                     <p className="text-2xl font-bold text-red-600">
                       {peakAqi}
                     </p>
-                    <p className="text-xs text-muted-foreground">Expected Tomorrow</p>
+                    <p className="text-xs text-muted-foreground">Expected {peakTime}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -239,8 +269,14 @@ const Forecast = () => {
                 <CardContent className="p-4 text-center">
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">Improvement Expected</p>
-                    <p className="text-2xl font-bold text-green-600">Day 3</p>
-                    <p className="text-xs text-muted-foreground">AQI drops to 275</p>
+                    {improvementTime ? (
+                      <>
+                        <span className="text-2xl font-bold text-green-600">{improvementTime}</span>
+                        <p className="text-xs text-muted-foreground">AQI drops to {improvementAqi}</p>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No improvement expected</span>
+                    )}
                   </div>
                 </CardContent>
               </Card>
