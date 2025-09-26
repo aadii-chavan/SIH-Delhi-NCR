@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Factory, MapPin, Clock } from "lucide-react";
 import { airQualityData, getAQIStatus } from "@/data/airQualityData";
+import { LiveAQICard } from "./LiveAQICard";
 
 interface StatCardProps {
   title: string;
@@ -62,54 +63,15 @@ function StatCard({ title, value, subtitle, trend, icon, details, className }: S
 
 export function QuickStatsGrid({ className }: { className?: string }) {
   const stats = airQualityData.quickStats;
-  const liveAqi = airQualityData.currentAqi.aqi;
-  const liveZone = airQualityData.sourceBreakdown?.[0]?.zone ?? "Delhi Central";
-  const liveStatus = getAQIStatus(liveAqi).status;
-  const liveTimestamp = airQualityData.currentAqi.timestamp;
-
   const sourcesObj = airQualityData.currentAqi.sources;
   const sourcesSorted = Object.entries(sourcesObj).sort((a, b) => b[1] - a[1]);
-  const topTwo = sourcesSorted.slice(0, 2);
-
   const fcAll = airQualityData.forecasts.shortTerm.filter((f) => f.zone === "Delhi Central");
   const fcNext = fcAll.slice(0, 3);
 
   return (
     <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 ${className}`}>
       {/* Live AQI — Delhi Central */}
-      <StatCard
-        title={`Live AQI — ${liveZone}`}
-        value={`${liveAqi}`}
-        subtitle={liveStatus}
-        icon={<MapPin className="w-5 h-5" />}
-        details={
-          <div className="space-y-2">
-            {/* AQI scale */}
-            <div className="relative h-2 w-full overflow-hidden rounded-full bg-gradient-to-r from-green-500 via-yellow-500 via-orange-500 to-red-500">
-              <div
-                className="absolute top-0 h-full w-1 -translate-x-1/2 rounded-sm bg-white shadow"
-                style={{ left: `${Math.min(Math.max((liveAqi / 500) * 100, 0), 100)}%` }}
-                aria-hidden="true"
-              />
-            </div>
-            {/* Top sources */}
-            <div className="flex flex-wrap gap-1.5">
-              {topTwo.map(([name, pct]) => (
-                <span key={name} className="rounded-full border px-2 py-0.5 text-[11px] bg-secondary text-secondary-foreground">
-                  {name.charAt(0).toUpperCase() + name.slice(1)} {pct}%
-                </span>
-              ))}
-            </div>
-            {/* Timestamp */}
-            <div className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" />
-              <span>Updated {new Date(liveTimestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-            </div>
-          </div>
-        }
-      />
-
-      
+      <LiveAQICard city="delhi" />
 
       {/* Dominant Source */}
       <StatCard
