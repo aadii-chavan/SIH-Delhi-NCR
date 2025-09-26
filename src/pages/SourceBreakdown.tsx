@@ -5,9 +5,10 @@ import { LiveSourceImpactAnalysis } from "@/components/dashboard/LiveSourceImpac
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Filter, X, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { Download, Filter, X, TrendingUp, TrendingDown, AlertTriangle, Activity, RefreshCw, Minus } from "lucide-react";
 import { airQualityData } from "@/data/airQualityData";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
@@ -24,7 +25,7 @@ const SourceBreakdown = () => {
   const [stubbleScenario, setStubbleScenario] = useState([0]);
   const [scenarioApplied, setScenarioApplied] = useState(false);
   const { aqi, zone, setZone } = useAqiSimulation("Delhi");
-  const { data: backendData } = useBackendSourceImpact();
+  const { data: backendData, loading, error, refetch, lastUpdated } = useBackendSourceImpact();
   const ariaLiveMessage = useMemo(() => `AQI ${aqi}, Zone: ${zone}`, [aqi, zone]);
 
   // Use backend data if available, otherwise fallback to hardcoded data
@@ -97,24 +98,83 @@ const SourceBreakdown = () => {
   const top2Share = entriesSorted.slice(0, 2).reduce((sum, [, v]) => sum + (v as number), 0);
 
   const exportCSV = () => {
-    const headers = ["Date", "Zone", "Stubble Burning (%)", "Traffic (%)", "Industrial (%)", "Other (%)"];
-    const rows = filteredData.map(item => [
-      item.timestamp.split("T")[0],
-      item.zone,
-      item.sources.stubble,
-      item.sources.traffic,
-      item.sources.industrial,
-      item.sources.other
-    ]);
-    
-    const csvContent = [headers, ...rows].map(row => row.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "pollution-sources.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    if (backendData) {
+      // Export live data
+      const headers = ["Source", "Current %", "Previous %", "Change %", "Risk Level", "Impact"];
+      const rows = Object.entries(backendData.sources).map(([source, current]) => {
+        const previous = backendData.previous[source as keyof typeof backendData.previous];
+        const delta = current - previous;
+        const getSourceLabel = (source: string) => {
+          switch (source) {
+            case 'stubble': return 'Stubble Burning';
+            case 'traffic': return 'Vehicle Traffic';
+            case 'industrial': return 'Industrial Emissions';
+            case 'other': return 'Other Sources';
+            default: return source;
+          }
+        };
+        const getRiskLevel = (percentage: number) => {
+          if (percentage >= 35) return 'High';
+          if (percentage >= 25) return 'Elevated';
+          if (percentage >= 15) return 'Moderate';
+          return 'Low';
+        };
+        const getImpactDescription = (source: string, percentage: number) => {
+          switch (source) {
+            case 'stubble':
+              return percentage >= 30 ? 'Severe respiratory impact' : 
+                     percentage >= 20 ? 'Moderate health risk' : 'Low impact';
+            case 'traffic':
+              return percentage >= 35 ? 'High NO2 exposure' : 
+                     percentage >= 25 ? 'Elevated traffic pollution' : 'Normal levels';
+            case 'industrial':
+              return percentage >= 25 ? 'Industrial emissions high' : 
+                     percentage >= 15 ? 'Moderate industrial impact' : 'Low industrial activity';
+            case 'other':
+              return percentage >= 20 ? 'Multiple sources active' : 'Minimal other sources';
+            default:
+              return 'Standard impact';
+          }
+        };
+        return [
+          getSourceLabel(source),
+          current,
+          previous,
+          delta.toFixed(1),
+          getRiskLevel(current),
+          getImpactDescription(source, current)
+        ];
+      });
+      
+      const csvContent = [headers, ...rows].map(row => row.join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `live-pollution-sources-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      // Export historical data
+      const headers = ["Date", "Zone", "Stubble Burning (%)", "Traffic (%)", "Industrial (%)", "Other (%)"];
+      const rows = filteredData.map(item => [
+        item.timestamp.split("T")[0],
+        item.zone,
+        item.sources.stubble,
+        item.sources.traffic,
+        item.sources.industrial,
+        item.sources.other
+      ]);
+      
+      const csvContent = [headers, ...rows].map(row => row.join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "historical-pollution-sources.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (
@@ -128,7 +188,7 @@ const SourceBreakdown = () => {
           </div>
           <Button onClick={exportCSV} className="flex items-center gap-2">
             <Download className="w-4 h-4" />
-            Export Data
+            {backendData ? "Export Live Data" : "Export Historical Data"}
           </Button>
         </div>
 
@@ -277,36 +337,173 @@ const SourceBreakdown = () => {
           </CardContent>
         </Card>
 
-        {/* Data Table */}
+        {/* Live Data Table */}
         <Card className="card-gradient shadow-soft">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-foreground">Raw Data</CardTitle>
+            <CardTitle className="text-lg font-semibold text-foreground flex items-center justify-between">
+              Live Source Data
+              <div className="flex items-center gap-2">
+                {backendData && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Activity className="w-3 h-3 mr-1" />
+                    Live Data
+                  </Badge>
+                )}
+                <Button variant="ghost" size="sm" onClick={refetch} disabled={loading} className="h-6 w-6 p-0">
+                  {loading ? <Activity className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                </Button>
+              </div>
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Zone</TableHead>
-                  <TableHead>Stubble Burning (%)</TableHead>
-                  <TableHead>Traffic (%)</TableHead>
-                  <TableHead>Industrial (%)</TableHead>
-                  <TableHead>Other (%)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredData.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{item.timestamp.split("T")[0]}</TableCell>
-                    <TableCell>{item.zone}</TableCell>
-                    <TableCell>{item.sources.stubble}%</TableCell>
-                    <TableCell>{item.sources.traffic}%</TableCell>
-                    <TableCell>{item.sources.industrial}%</TableCell>
-                    <TableCell>{item.sources.other}%</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {backendData ? (
+              <div className="space-y-4">
+                {/* Current Live Data */}
+                <div>
+                  <h4 className="text-sm font-medium text-foreground mb-3">Current Analysis (Live)</h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Source</TableHead>
+                        <TableHead>Current %</TableHead>
+                        <TableHead>Previous %</TableHead>
+                        <TableHead>Change</TableHead>
+                        <TableHead>Risk Level</TableHead>
+                        <TableHead>Impact</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(backendData.sources).map(([source, current]) => {
+                        const previous = backendData.previous[source as keyof typeof backendData.previous];
+                        const delta = current - previous;
+                        const isIncrease = delta > 0;
+                        const isDecrease = delta < 0;
+                        const isNoChange = delta === 0;
+                        
+                        const getSourceLabel = (source: string) => {
+                          switch (source) {
+                            case 'stubble': return 'Stubble Burning';
+                            case 'traffic': return 'Vehicle Traffic';
+                            case 'industrial': return 'Industrial Emissions';
+                            case 'other': return 'Other Sources';
+                            default: return source;
+                          }
+                        };
+
+                        const getRiskLevel = (percentage: number) => {
+                          if (percentage >= 35) return { level: 'High', color: 'text-red-600 bg-red-50' };
+                          if (percentage >= 25) return { level: 'Elevated', color: 'text-orange-600 bg-orange-50' };
+                          if (percentage >= 15) return { level: 'Moderate', color: 'text-yellow-600 bg-yellow-50' };
+                          return { level: 'Low', color: 'text-green-600 bg-green-50' };
+                        };
+
+                        const getImpactDescription = (source: string, percentage: number) => {
+                          switch (source) {
+                            case 'stubble':
+                              return percentage >= 30 ? 'Severe respiratory impact' : 
+                                     percentage >= 20 ? 'Moderate health risk' : 'Low impact';
+                            case 'traffic':
+                              return percentage >= 35 ? 'High NO2 exposure' : 
+                                     percentage >= 25 ? 'Elevated traffic pollution' : 'Normal levels';
+                            case 'industrial':
+                              return percentage >= 25 ? 'Industrial emissions high' : 
+                                     percentage >= 15 ? 'Moderate industrial impact' : 'Low industrial activity';
+                            case 'other':
+                              return percentage >= 20 ? 'Multiple sources active' : 'Minimal other sources';
+                            default:
+                              return 'Standard impact';
+                          }
+                        };
+
+                        const risk = getRiskLevel(current);
+                        const impact = getImpactDescription(source, current);
+
+                        return (
+                          <TableRow key={source}>
+                            <TableCell className="font-medium">{getSourceLabel(source)}</TableCell>
+                            <TableCell className="font-bold">{current}%</TableCell>
+                            <TableCell>{previous}%</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {isIncrease && <TrendingUp className="w-3 h-3 text-red-600" />}
+                                {isDecrease && <TrendingDown className="w-3 h-3 text-green-600" />}
+                                {isNoChange && <Minus className="w-3 h-3 text-muted-foreground" />}
+                                <span className={`text-xs ${isIncrease ? 'text-red-600' : isDecrease ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                  {isNoChange ? 'No change' : `${isIncrease ? '+' : ''}${delta.toFixed(1)}%`}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={`text-xs ${risk.color}`} variant="secondary">
+                                {risk.level}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground max-w-32">
+                              {impact}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Data Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+                  <div className="text-center p-3 bg-secondary/40 rounded-lg">
+                    <div className="text-xs text-muted-foreground">Zone</div>
+                    <div className="font-semibold">{backendData.zone}</div>
+                  </div>
+                  <div className="text-center p-3 bg-secondary/40 rounded-lg">
+                    <div className="text-xs text-muted-foreground">Last Updated</div>
+                    <div className="font-semibold text-xs">
+                      {lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : 'Unknown'}
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-secondary/40 rounded-lg">
+                    <div className="text-xs text-muted-foreground">Data Source</div>
+                    <div className="font-semibold text-xs">CPCB + NASA FIRMS</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Fallback to historical data */}
+                <div>
+                  <h4 className="text-sm font-medium text-foreground mb-3">Historical Data (Fallback)</h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Zone</TableHead>
+                        <TableHead>Stubble Burning (%)</TableHead>
+                        <TableHead>Traffic (%)</TableHead>
+                        <TableHead>Industrial (%)</TableHead>
+                        <TableHead>Other (%)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredData.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.timestamp.split("T")[0]}</TableCell>
+                          <TableCell>{item.zone}</TableCell>
+                          <TableCell>{item.sources.stubble}%</TableCell>
+                          <TableCell>{item.sources.traffic}%</TableCell>
+                          <TableCell>{item.sources.industrial}%</TableCell>
+                          <TableCell>{item.sources.other}%</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 mx-auto mb-2" />
+                  <div className="text-sm text-yellow-800">Backend connection unavailable</div>
+                  <div className="text-xs text-yellow-600">Showing historical data instead</div>
+                </div>
+              </div>
+            )}
+            
             {scenarioApplied && (
               <div className="mt-4 text-xs text-muted-foreground">
                 Export will include scenario context (wind/stubble adjustments).
