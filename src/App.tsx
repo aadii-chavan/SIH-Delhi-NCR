@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import SourceBreakdown from "./pages/SourceBreakdown";
 import Forecast from "./pages/Forecast";
@@ -10,7 +10,6 @@ import InterventionAnalytics from "./pages/InterventionAnalytics";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import Login from "./pages/Login";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { LanguageProvider } from "@/hooks/use-language";
 import PolicyDashboard from "@/pages/PolicyDashboard";
@@ -18,23 +17,10 @@ import PolicyDashboard from "@/pages/PolicyDashboard";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
-  const { isAuthenticated } = useAuth();
-  const location = useLocation();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
-  }
   return children;
 };
 
 const PolicyRoute = ({ children }: { children: React.ReactElement }) => {
-  const { isAuthenticated, isPolicymaker } = useAuth();
-  const location = useLocation();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
-  }
-  if (!isPolicymaker) {
-    return <Navigate to="/" replace />;
-  }
   return children;
 };
 
@@ -47,7 +33,6 @@ const App = () => (
         <LanguageProvider>
           <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<Login />} />
             <Route
               path="/"
               element={

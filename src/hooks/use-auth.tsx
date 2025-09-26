@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 type User = {
   email: string;
@@ -19,24 +19,13 @@ const AUTH_STORAGE_KEY = "app_auth_token";
 const AUTH_USER_KEY = "app_auth_user";
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true); // Default to authenticated
+  const [user, setUser] = useState<User | null>({ email: "guest@example.com", role: "viewer" }); // Default user
 
-  useEffect(() => {
-    const token = localStorage.getItem(AUTH_STORAGE_KEY);
-    const storedUser = localStorage.getItem(AUTH_USER_KEY);
-    setIsAuthenticated(Boolean(token));
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        setUser(null);
-      }
-    }
-  }, []);
+  // Remove the useEffect that checks localStorage since we're not using login anymore
 
   const login = useCallback(async (args: { email: string; password: string }) => {
-    // Mock credential check
+    // Mock credential check - no longer needed but keeping for compatibility
     const isPolicyAdmin = args.email === "admin@policy.gov" && args.password === "policy123";
     const role: User["role"] = isPolicyAdmin ? "policymaker" : "viewer";
     const token = isPolicyAdmin ? "policy-token" : "viewer-token";
@@ -49,10 +38,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    localStorage.removeItem(AUTH_USER_KEY);
-    setUser(null);
-    setIsAuthenticated(false);
+    // Reset to default state instead of clearing
+    setUser({ email: "guest@example.com", role: "viewer" });
+    setIsAuthenticated(true);
   }, []);
 
   const value = useMemo(
