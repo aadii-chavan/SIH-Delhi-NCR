@@ -2,10 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ZoneKey } from "./use-aqi-simulation";
 
 export type HistoryPoint = { time: string; aqi: number };
-export type TimeRange = "24h" | "3d";
+export type TimeRange = "6h" | "12h" | "24h" | "3d" | "7d";
 
-const MAX_POINTS_24H = 24; // hourly
-const MAX_POINTS_3D = 72; // hourly x 3 days
+const MAX_POINTS_6H = 6;
+const MAX_POINTS_12H = 12;
+const MAX_POINTS_24H = 24;
+const MAX_POINTS_3D = 72;
+const MAX_POINTS_7D = 168;
 
 function generateSeed(zone: ZoneKey, hours: number): HistoryPoint[] {
   const now = new Date();
@@ -24,9 +27,9 @@ function generateSeed(zone: ZoneKey, hours: number): HistoryPoint[] {
 export function useAqiHistory(zone: ZoneKey, latestAqi: number) {
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
   const storeRef = useRef<Record<ZoneKey, HistoryPoint[]>>({
-    Delhi: generateSeed("Delhi", MAX_POINTS_3D),
-    Noida: generateSeed("Noida", MAX_POINTS_3D),
-    Gurgaon: generateSeed("Gurgaon", MAX_POINTS_3D),
+    Delhi: generateSeed("Delhi", MAX_POINTS_7D),
+    Noida: generateSeed("Noida", MAX_POINTS_7D),
+    Gurgaon: generateSeed("Gurgaon", MAX_POINTS_7D),
   });
   const lastAqiRef = useRef<number | null>(null);
 
@@ -37,22 +40,27 @@ export function useAqiHistory(zone: ZoneKey, latestAqi: number) {
     const list = storeRef.current[zone];
     const next: HistoryPoint = { time: new Date().toISOString(), aqi: latestAqi };
     const updated = [...list, next];
-    // keep at most 72 points
-    storeRef.current[zone] = updated.slice(-MAX_POINTS_3D);
+    // keep at most 168 points
+    storeRef.current[zone] = updated.slice(-MAX_POINTS_7D);
   }, [latestAqi, zone]);
 
   // When zone changes, ensure it has seed data
   useEffect(() => {
     const exists = storeRef.current[zone];
     if (!exists || exists.length === 0) {
-      storeRef.current[zone] = generateSeed(zone, MAX_POINTS_3D);
+      storeRef.current[zone] = generateSeed(zone, MAX_POINTS_7D);
     }
   }, [zone]);
 
   const dataAll = storeRef.current[zone];
 
   const filtered = useMemo(() => {
-    const max = timeRange === "24h" ? MAX_POINTS_24H : MAX_POINTS_3D;
+    let max = MAX_POINTS_24H;
+    if (timeRange === "6h") max = MAX_POINTS_6H;
+    else if (timeRange === "12h") max = MAX_POINTS_12H;
+    else if (timeRange === "24h") max = MAX_POINTS_24H;
+    else if (timeRange === "3d") max = MAX_POINTS_3D;
+    else if (timeRange === "7d") max = MAX_POINTS_7D;
     return dataAll.slice(-max);
   }, [dataAll, timeRange]);
 
