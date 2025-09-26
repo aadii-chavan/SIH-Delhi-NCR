@@ -3,6 +3,7 @@ import { TrendingUp, TrendingDown, Factory, MapPin, Clock, Minus } from "lucide-
 import { airQualityData, getAQIStatus } from "@/data/airQualityData";
 import { LiveAQICard } from "./LiveAQICard";
 import { InteractiveTrendCard } from "./InteractiveTrendCard";
+import { useBackendSourceImpact } from "@/hooks/use-backend-source-impact";
 
 interface StatCardProps {
   title: string;
@@ -66,8 +67,11 @@ function StatCard({ title, value, subtitle, trend, icon, details, className }: S
 }
 
 export function QuickStatsGrid({ className }: { className?: string }) {
+  const { data: backendData } = useBackendSourceImpact();
   const stats = airQualityData.quickStats;
-  const sourcesObj = airQualityData.currentAqi.sources;
+  
+  // Use backend data if available, otherwise fallback to hardcoded data
+  const sourcesObj = backendData?.sources || airQualityData.currentAqi.sources;
   const sourcesSorted = Object.entries(sourcesObj).sort((a, b) => b[1] - a[1]);
 
   return (

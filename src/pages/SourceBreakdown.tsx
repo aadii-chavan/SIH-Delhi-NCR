@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PollutionSourcesChart } from "@/components/dashboard/PollutionSourcesChart";
+import { LiveSourceImpactAnalysis } from "@/components/dashboard/LiveSourceImpactAnalysis";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { AQICard } from "@/components/dashboard/AQICard";
 import { useAqiSimulation, ZoneKey } from "@/hooks/use-aqi-simulation";
 import { useSourceShift } from "@/hooks/use-source-shift";
 import { SankeyDiagram } from "@/components/dashboard/SankeyDiagram";
+import { useBackendSourceImpact } from "@/hooks/use-backend-source-impact";
 
 const SourceBreakdown = () => {
   const [selectedDate, setSelectedDate] = useState("2025-09-23");
@@ -22,16 +24,35 @@ const SourceBreakdown = () => {
   const [stubbleScenario, setStubbleScenario] = useState([0]);
   const [scenarioApplied, setScenarioApplied] = useState(false);
   const { aqi, zone, setZone } = useAqiSimulation("Delhi");
+  const { data: backendData } = useBackendSourceImpact();
   const ariaLiveMessage = useMemo(() => `AQI ${aqi}, Zone: ${zone}`, [aqi, zone]);
 
-  // Filter data based on selections
+  // Use backend data if available, otherwise fallback to hardcoded data
+  const currentData = useMemo(() => {
+    if (backendData) {
+      return {
+        timestamp: backendData.timestamp || new Date().toISOString(),
+        zone: backendData.zone,
+        sources: backendData.sources
+      };
+    }
+    
+    // Fallback to hardcoded data
+    const filteredData = airQualityData.sourceBreakdown.filter((item) => {
+      const matchesDate = selectedDate === "all" || item.timestamp.includes(selectedDate);
+      const matchesZone = selectedZone === "all" || item.zone === selectedZone;
+      return matchesDate && matchesZone;
+    });
+    
+    return filteredData.length > 0 ? filteredData[0] : airQualityData.sourceBreakdown[0];
+  }, [backendData, selectedDate, selectedZone]);
+
+  // Filter data based on selections (for table display)
   const filteredData = airQualityData.sourceBreakdown.filter((item) => {
     const matchesDate = selectedDate === "all" || item.timestamp.includes(selectedDate);
     const matchesZone = selectedZone === "all" || item.zone === selectedZone;
     return matchesDate && matchesZone;
   });
-
-  const currentData = filteredData.length > 0 ? filteredData[0] : airQualityData.sourceBreakdown[0];
 
   const adjustedSources = useMemo(() => {
     const base = { ...currentData.sources } as typeof currentData.sources;
@@ -209,70 +230,8 @@ const SourceBreakdown = () => {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <PollutionSourcesChart sources={useSourceShift(scenarioApplied ? adjustedSources : currentData.sources)} />
           
-          {/* Source Details & Insights */}
-          <Card className="card-gradient shadow-soft">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-foreground">Source Impact Analysis</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* Summary header */}
-              <div className="mb-4 grid grid-cols-2 gap-3">
-                <div className="rounded-lg border p-3 bg-secondary/40">
-                  <div className="text-[11px] text-muted-foreground">Dominant Source</div>
-                  <div className="text-sm font-medium text-foreground">
-                    {dominant[0] === "stubble" ? "Stubble Burning" : dominant[0] === "traffic" ? "Vehicle Traffic" : dominant[0] === "industrial" ? "Industrial Emissions" : "Other Sources"}
-                  </div>
-                  <div className="text-lg font-bold">{dominant[1]}%</div>
-                </div>
-                <div className="rounded-lg border p-3 bg-secondary/40">
-                  <div className="text-[11px] text-muted-foreground">Top-2 Share</div>
-                  <div className="text-lg font-bold text-foreground">{top2Share}%</div>
-                  <div className="text-[11px] text-muted-foreground">of total contribution</div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {Object.entries(currentData.sources).map(([source, percentage]) => {
-                  const effectivePct = scenarioApplied ? (adjustedSources as any)[source] : percentage;
-                  const prevPct = prevData?.sources?.[source as keyof typeof currentData.sources] ?? undefined;
-                  const delta = prevPct === undefined ? 0 : (effectivePct as number) - (prevPct as number);
-                  const up = delta > 0;
-                  const color = source === "stubble" ? "bg-orange-500" : source === "traffic" ? "bg-blue-500" : source === "industrial" ? "bg-red-500" : "bg-gray-500";
-                  const label = source === "stubble" ? "Stubble Burning" : source === "traffic" ? "Vehicle Traffic" : source === "industrial" ? "Industrial Emissions" : "Other Sources";
-                  const riskBadge = (effectivePct as number) >= 35 ? (
-                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">High</span>
-                  ) : (effectivePct as number) >= 25 ? (
-                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200">Elevated</span>
-                  ) : null;
-                  return (
-                    <div key={source} className="p-3 rounded-lg border bg-accent/30">
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium text-foreground">
-                          <span className="capitalize">{label}</span>
-                          {riskBadge}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold">{effectivePct}%</span>
-                          {prevPct !== undefined && (
-                            <span className={`flex items-center text-xs ${up ? "text-red-600" : delta < 0 ? "text-green-600" : "text-muted-foreground"}`}>
-                              {delta === 0 ? null : up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                              {delta === 0 ? "No change" : `${up ? "+" : ""}${delta}% vs prev`}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="mt-2 h-2 w-full rounded bg-muted overflow-hidden">
-                        <div className={`h-full ${color}`} style={{ width: `${effectivePct}%` }} />
-                      </div>
-                      {prevPct !== undefined && (
-                        <div className="mt-1 text-[11px] text-muted-foreground">Prev: {prevPct}%</div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Live Source Impact Analysis */}
+          <LiveSourceImpactAnalysis />
         </div>
 
         {/* Sankey Diagram */}

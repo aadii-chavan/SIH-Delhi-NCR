@@ -3,6 +3,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend, ChartOptions, Chart, Act
 import { Doughnut } from "react-chartjs-2";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLiveSourceImpact } from "@/hooks/use-live-source-impact";
+import { useBackendSourceImpact } from "@/hooks/use-backend-source-impact";
 import { useLiveAQI } from "@/hooks/use-live-aqi";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,9 +11,13 @@ import { RefreshCw, Activity, AlertCircle, Clock, MapPin } from "lucide-react";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-export function PollutionSourcesChart({ className }: { className?: string }) {
-  const { sources, loading, error, refetch, lastUpdated } = useLiveSourceImpact("delhi");
+export function PollutionSourcesChart({ sources: propSources, className }: { sources?: any; className?: string }) {
+  const { sources: backendSources, loading, error, refetch, lastUpdated } = useBackendSourceImpact();
   const { data: liveAqi, loading: aqiLoading, error: aqiError, refetch: refetchAqi, lastUpdated: aqiLastUpdated } = useLiveAQI("delhi");
+  
+  // Use prop sources if provided (for scenario modeling), otherwise use backend data
+  const sources = propSources || backendSources;
+  
   const labels = ["Stubble Burning", "Vehicle Traffic", "Industrial", "Other Sources"];
   const values = sources ? [sources.stubble, sources.traffic, sources.industrial, sources.other] : [0, 0, 0, 0];
   const baseColors = [
@@ -166,12 +171,14 @@ export function PollutionSourcesChart({ className }: { className?: string }) {
           )}
         </div>
         <div className="flex items-center gap-2 mt-2">
-          {lastUpdated && (
+          {lastUpdated && !propSources && (
             <span className="text-xs text-muted-foreground">Sources updated {formatLastUpdated(lastUpdated)}</span>
           )}
-          <Button variant="ghost" size="sm" onClick={refetch} disabled={loading} className="h-6 w-6 p-0">
-            {loading ? <Activity className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          </Button>
+          {!propSources && (
+            <Button variant="ghost" size="sm" onClick={refetch} disabled={loading} className="h-6 w-6 p-0">
+              {loading ? <Activity className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
