@@ -73,6 +73,31 @@ export function QuickStatsGrid({ className }: { className?: string }) {
   // Use backend data if available, otherwise fallback to hardcoded data
   const sourcesObj = backendData?.sources || airQualityData.currentAqi.sources;
   const sourcesSorted = Object.entries(sourcesObj).sort((a, b) => b[1] - a[1]);
+  const dominantEntry = sourcesSorted[0];
+  const dominantKey = dominantEntry?.[0] as keyof typeof sourcesObj | undefined;
+  const dominantPct = (dominantEntry?.[1] as number | undefined) ?? 0;
+  const prevPct = dominantKey && backendData ? backendData.previous[dominantKey] : undefined;
+  const delta = prevPct !== undefined ? (dominantPct - prevPct) : undefined;
+  const direction = delta !== undefined ? (delta > 0 ? "up" : delta < 0 ? "down" : undefined) : undefined;
+
+  const labelMap: Record<string, string> = {
+    stubble: "Stubble Burning",
+    traffic: "Vehicle Traffic",
+    industrial: "Industrial Emissions",
+    other: "Other Sources",
+  };
+
+  const causeMap: Record<string, string> = {
+    stubble: "Open crop residue fires (Punjab/Haryana) transported into Delhi; higher during Oct–Nov.",
+    traffic: "Urban NO2 from vehicular emissions (rush hours, congestion corridors).",
+    industrial: "SO2/NO2 from thermal plants and NCR industries; stable baseline contribution.",
+    other: "Mixed: road dust, construction, residential fuel, and background transport.",
+  };
+
+  const dominantLabel = dominantKey ? labelMap[dominantKey] : "—";
+  const dominantValueText = backendData
+    ? `${dominantLabel}: ${dominantPct}%`
+    : stats.dominantSource;
 
   return (
     <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 ${className}`}>
@@ -82,14 +107,32 @@ export function QuickStatsGrid({ className }: { className?: string }) {
       {/* Dominant Source */}
       <StatCard
         title="Dominant Source"
-        value={stats.dominantSource}
+        value={dominantValueText}
+        subtitle={
+          backendData && prevPct !== undefined
+            ? `${delta === 0 ? "No change" : delta! > 0 ? "+" : ""}${(delta!).toFixed(1)}% vs prev`
+            : undefined
+        }
+        trend={
+          backendData && direction
+            ? { direction: direction as "up" | "down", value: `${Math.abs(delta!).toFixed(1)}%` }
+            : undefined
+        }
         icon={<Factory className="w-5 h-5" />}
         details={
           <div className="space-y-2">
+            {backendData && dominantKey && (
+              <div className="rounded-md p-2 bg-secondary/40 text-foreground">
+                <div className="text-[11px] text-muted-foreground mb-1">Why dominant?</div>
+                <div className="text-xs leading-relaxed">
+                  {causeMap[dominantKey as string]}
+                </div>
+              </div>
+            )}
             {sourcesSorted.slice(0, 3).map(([name, pct]) => (
               <div key={name}>
                 <div className="flex items-center justify-between">
-                  <span className="capitalize">{name}</span>
+                  <span className="capitalize">{labelMap[name] ?? name}</span>
                   <span>{pct}%</span>
                 </div>
                 <div className="h-2 w-full rounded bg-muted overflow-hidden">
