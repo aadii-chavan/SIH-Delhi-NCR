@@ -10,15 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAqiSimulation, ZoneKey } from "@/hooks/use-aqi-simulation";
 import { useLanguage } from "@/hooks/use-language";
 import { useMemo } from "react";
-import { useAqiHistory } from "@/hooks/use-aqi-history";
-import { AQITrendChart } from "@/components/dashboard/AQITrendChart";
 import { useSourceShift } from "@/hooks/use-source-shift";
+import { LiveAQITrendChart } from "@/components/dashboard/LiveAQITrendChart";
 
 const Index = () => {
   const { currentAqi, aqiLocations } = airQualityData;
   const { t, toggle, lang } = useLanguage();
   const { aqi, center, zone, setZone, zones } = useAqiSimulation("Delhi");
-  const { timeRange, setTimeRange, points } = useAqiHistory(zone, aqi);
 
   const ariaLiveMessage = useMemo(() => `${t("aqi")} ${aqi}, ${t("zone")}: ${zone}`, [aqi, t, zone]);
 
@@ -91,13 +89,8 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Trend Chart */}
-          <AQITrendChart
-            points={points}
-            timeRange={timeRange}
-            onTimeRangeChange={setTimeRange}
-            title="24h Trend"
-          />
+          {/* Live 24h Trend Chart */}
+          <LiveAQITrendChart city="delhi" />
         </div>
       </div>
     </DashboardLayout>
