@@ -3,7 +3,7 @@ import { PollutionSourcesChart } from "@/components/dashboard/PollutionSourcesCh
 import { AQIMap } from "@/components/dashboard/AQIMap";
 import { QuickStatsGrid } from "@/components/dashboard/QuickStatsGrid";
 // Removed RecommendationCard, replaced with ForecastSummaryCard
-import { ForecastSummaryCard } from "@/components/dashboard/ForecastSummaryCard";
+import { LiveForecastSummaryCard } from "@/components/dashboard/LiveForecastSummaryCard";
 import { airQualityData } from "@/data/airQualityData";
 // import { AQICard } from "@/components/dashboard/AQICard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -59,9 +59,9 @@ const Index = () => {
             <PollutionSourcesChart sources={shiftedSources} className="h-full" />
           </div>
 
-          {/* 24h Forecast Summary */}
+          {/* 24h Live Forecast Summary */}
           <div className="xl:col-span-5">
-            <ForecastSummaryCard forecasts={airQualityData.forecasts.shortTerm} className="h-full" />
+            <LiveForecastSummaryCard city="delhi" className="h-full" />
           </div>
         </div>
 
