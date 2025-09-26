@@ -2,8 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Factory, MapPin, Clock, Minus } from "lucide-react";
 import { airQualityData, getAQIStatus } from "@/data/airQualityData";
 import { LiveAQICard } from "./LiveAQICard";
-import { useLiveAQI } from "@/hooks/use-live-aqi";
-import { calculateTrend, formatTrendDisplay } from "@/lib/trend-utils";
+import { InteractiveTrendCard } from "./InteractiveTrendCard";
 
 interface StatCardProps {
   title: string;
@@ -67,16 +66,9 @@ function StatCard({ title, value, subtitle, trend, icon, details, className }: S
 }
 
 export function QuickStatsGrid({ className }: { className?: string }) {
-  const { data: liveData, trendHistory } = useLiveAQI("delhi");
   const stats = airQualityData.quickStats;
   const sourcesObj = airQualityData.currentAqi.sources;
   const sourcesSorted = Object.entries(sourcesObj).sort((a, b) => b[1] - a[1]);
-  const fcAll = airQualityData.forecasts.shortTerm.filter((f) => f.zone === "Delhi Central");
-  const fcNext = fcAll.slice(0, 3);
-
-  // Calculate live trend data
-  const liveTrend = calculateTrend(trendHistory);
-  const trendDisplay = formatTrendDisplay(liveTrend);
 
   return (
     <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 ${className}`}>
@@ -105,46 +97,8 @@ export function QuickStatsGrid({ className }: { className?: string }) {
         }
       />
 
-      {/* Live AQI Trend */}
-      <StatCard
-        title="Live AQI Trend"
-        value={trendDisplay.value}
-        trend={{
-          direction: liveTrend.direction,
-          value: liveData ? `Current: ${liveData.aqi}` : "Loading...",
-        }}
-        icon={
-          trendDisplay.icon === "up" ? <TrendingUp className="w-5 h-5" /> :
-          trendDisplay.icon === "down" ? <TrendingDown className="w-5 h-5" /> :
-          <TrendingUp className="w-5 h-5" />
-        }
-        details={
-          <div className="space-y-1.5">
-            {/* Recent trend history */}
-            {trendHistory.length > 1 && (
-              <div className="space-y-1">
-                <div className="text-[11px] text-muted-foreground">Recent readings:</div>
-                {trendHistory.slice(-4).map((aqi, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <span className="text-[11px]">
-                      {index === trendHistory.length - 1 ? "Latest" : 
-                       index === trendHistory.length - 2 ? "Previous" : 
-                       `${trendHistory.length - index - 1} readings ago`}
-                    </span>
-                    <span className="font-medium text-foreground">{aqi}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {trendHistory.length <= 1 && (
-              <div className="text-[11px] text-muted-foreground">
-                Collecting trend data...
-              </div>
-            )}
-            <div className="text-[11px]">Zone: Delhi Central</div>
-          </div>
-        }
-      />
+      {/* Interactive AQI Trend */}
+      <InteractiveTrendCard city="delhi" />
     </div>
   );
 }

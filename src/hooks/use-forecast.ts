@@ -123,7 +123,12 @@ export const useForecast = (city: string = 'delhi', refreshInterval: number = 36
       const result: WAQIForecastResponse = await response.json();
       
       if (result.status !== 'ok') {
-        throw new Error('API returned error status');
+        console.warn('WAQI API returned error status, using fallback data');
+        // Use fallback data instead of throwing error
+        const fallbackData = generateFallbackForecast();
+        setForecastData(fallbackData);
+        setLastUpdated(new Date().toISOString());
+        return;
       }
 
       // Generate hourly forecast from daily data
@@ -134,12 +139,13 @@ export const useForecast = (city: string = 'delhi', refreshInterval: number = 36
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch forecast data';
-      setError(errorMessage);
-      console.error('Error fetching forecast data:', err);
+      console.warn('Error fetching forecast data, using fallback:', errorMessage);
       
-      // Fallback: Generate realistic forecast data based on current conditions
+      // Always use fallback data when API fails
       const fallbackData = generateFallbackForecast();
       setForecastData(fallbackData);
+      setLastUpdated(new Date().toISOString());
+      setError(null); // Clear error since we have fallback data
     } finally {
       setLoading(false);
     }
