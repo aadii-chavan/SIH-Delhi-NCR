@@ -1,353 +1,187 @@
 import { useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, Download, Filter, Calendar } from "lucide-react";
-import { airQualityData } from "@/data/airQualityData";
+import { Badge } from "@/components/ui/badge";
+import ReportCard from "@/components/dashboard/ReportCard";
+import { Report, ReportStatus, mockReports } from "@/data/reportsData";
+import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+
+type ViewMode = "list" | "map";
+
+const PAGE_SIZE = 6;
 
 const Reports = () => {
-  const [reportType, setReportType] = useState("sources");
-  const [dateRange, setDateRange] = useState("last-week");
-  const [location, setLocation] = useState("all");
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<ReportStatus | "All">("All");
+  const [view, setView] = useState<ViewMode>("list");
+  const [reports, setReports] = useState<Report[]>(mockReports);
+  const [exporting, setExporting] = useState(false);
+  const [page, setPage] = useState(1);
 
-  const scenarioContext = useMemo(() => {
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return reports.filter((r) => {
+      const matchesQuery = !q ||
+        r.locationName.toLowerCase().includes(q) ||
+        r.description.toLowerCase().includes(q) ||
+        r.user.toLowerCase().includes(q);
+      const matchesStatus = status === "All" || r.status === status;
+      return matchesQuery && matchesStatus;
+    });
+  }, [query, status, reports]);
+
+  const stats = useMemo(() => {
+    const total = filtered.length;
+    const pending = filtered.filter((r) => r.status === "Pending").length;
+    const verified = filtered.filter((r) => r.status === "Verified").length;
+    const resolved = filtered.filter((r) => r.status === "Resolved").length;
+    return { total, pending, verified, resolved };
+  }, [filtered]);
+
+  const paginated = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+
+  function handleStatusChange(id: string, next: ReportStatus) {
+    setReports((prev) => prev.map((r) => (r.id === id ? { ...r, status: next } : r)));
+  }
+
+  async function handleExportCsv() {
+    setExporting(true);
     try {
-      const raw = localStorage.getItem("policy_scenario_sources");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
+      const headers = [
+        "id","user","imageUrl","description","lat","lng","locationName","timestamp","status",
+      ];
+      const rows = filtered.map((r) => [
+        r.id,
+        r.user,
+        r.imageUrl,
+        r.description.replace(/\n/g, " ").replace(/"/g, '""'),
+        r.coordinates.lat.toString(),
+        r.coordinates.lng.toString(),
+        r.locationName,
+        r.timestamp,
+        r.status,
+      ]);
+      const csv = [headers.join(","), ...rows.map((row) => row.map((c) => `"${c}"`).join(","))].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `reports-export-${Date.now()}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
     }
-  }, []);
-
-  const getReportData = () => {
-    switch (reportType) {
-      case "sources":
-        return airQualityData.sourceBreakdown.map(item => ({
-          date: item.timestamp.split("T")[0],
-          location: item.zone,
-          stubble: item.sources.stubble,
-          traffic: item.sources.traffic,
-          industrial: item.sources.industrial,
-          other: item.sources.other,
-          scenario_windFactor: scenarioContext?.windFactor ?? "",
-          scenario_stubbleReductionPct: scenarioContext?.stubbleReductionPct ?? "",
-        }));
-      case "forecasts":
-        return airQualityData.forecasts.shortTerm.map(item => ({
-          time: item.time,
-          location: item.zone,
-          aqi: item.aqi,
-        }));
-      case "interventions":
-        return airQualityData.interventions.map(item => ({
-          name: item.name,
-          start: item.start,
-          end: item.end,
-          aqiBefore: item.aqiBefore,
-          aqiAfter: item.aqiAfter,
-          impact: item.impact,
-        }));
-      default:
-        return [];
-    }
-  };
-
-  const exportCSV = () => {
-    const data = getReportData();
-    if (data.length === 0) return;
-
-    const headers = Object.keys(data[0]);
-    const watermark = "FOR OFFICIAL USE ONLY";
-    const csvContent = [
-      `# ${watermark}`,
-      `# Generated: ${new Date().toISOString()}`,
-      headers.join(","),
-      ...data.map(row => headers.map(header => row[header as keyof typeof row]).join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${reportType}-report-${dateRange}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportPDF = () => {
-    // Mock PDF export - in a real application, you would use a library like jsPDF
-    const data = getReportData();
-    console.log("Exporting PDF with data:", data);
-    
-    // Create a simple text-based PDF content
-    const watermark = "FOR OFFICIAL USE ONLY";
-    const pdfContent = `
-Delhi-NCR Air Quality Report
-Report Type: ${reportType}
-Date Range: ${dateRange}
-Location: ${location}
-
-Generated on: ${new Date().toLocaleString()}
-
-Data Summary:
-${JSON.stringify(data, null, 2)}
- 
- Watermark: ${watermark}
- Scenario: ${JSON.stringify(scenarioContext)}
-    `;
-
-    const blob = new Blob([pdfContent], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${reportType}-report-${dateRange}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const reportData = getReportData();
-
-  // Mock audit logs
-  const [auditUser, setAuditUser] = useState("all");
-  const [auditDate, setAuditDate] = useState("all");
-  const auditLogs = useMemo(() => ([
-    { user: "admin", action: "Viewed Sources", time: "2025-09-23T12:00" },
-    { user: "admin", action: "Exported Interventions", time: "2025-09-23T12:10" },
-    { user: "analyst", action: "Viewed Forecasts", time: "2025-09-22T09:30" },
-    { user: "admin", action: "Downloaded Reports", time: "2025-09-22T10:05" },
-  ]), []);
-  const filteredAudit = useMemo(() => auditLogs.filter(l => {
-    const matchesUser = auditUser === "all" || l.user === auditUser;
-    const matchesDate = auditDate === "all" || l.time.startsWith(auditDate);
-    return matchesUser && matchesDate;
-  }), [auditLogs, auditUser, auditDate]);
+  }
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Reports</h1>
-            <p className="text-muted-foreground">Generate and download comprehensive air quality reports</p>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Citizen Reports</h1>
+          <p className="text-sm text-muted-foreground">Crowdsourced pollution incident reports</p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="md:col-span-1 flex items-center gap-2">
+            <Input
+              placeholder="Search by location, keyword, or user"
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+            />
+            <Select value={status} onValueChange={(v) => { setStatus(v as ReportStatus | "All"); setPage(1); }}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All</SelectItem>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="Verified">Verified</SelectItem>
+                <SelectItem value="Resolved">Resolved</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={exportCSV} variant="outline" className="flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              Export CSV
-            </Button>
-            <Button onClick={exportPDF} className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Export PDF
-            </Button>
+          <div className="md:col-span-2 flex items-center justify-end gap-2">
+            <div className="flex items-center gap-2 text-sm">
+              <Badge variant="secondary">Total: {stats.total}</Badge>
+              <Badge className="bg-yellow-100 text-yellow-800">Pending: {stats.pending}</Badge>
+              <Badge className="bg-blue-100 text-blue-800">Verified: {stats.verified}</Badge>
+              <Badge className="bg-green-100 text-green-800">Resolved: {stats.resolved}</Badge>
+            </div>
+            <Button variant="outline" onClick={handleExportCsv} disabled={exporting}>Export CSV</Button>
+            <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)}>
+              <TabsList>
+                <TabsTrigger value="list">List View</TabsTrigger>
+                <TabsTrigger value="map">Map View</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </div>
 
-        {/* Report Configuration */}
-        <Card className="card-gradient shadow-soft">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Filter className="w-5 h-5" />
-              Report Configuration
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Report Type</label>
-                <Select value={reportType} onValueChange={setReportType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select report type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sources">Pollution Sources</SelectItem>
-                    <SelectItem value="forecasts">AQI Forecasts</SelectItem>
-                    <SelectItem value="interventions">Interventions</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Date Range</label>
-                <Select value={dateRange} onValueChange={setDateRange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select date range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="last-week">Last Week</SelectItem>
-                    <SelectItem value="last-month">Last Month</SelectItem>
-                    <SelectItem value="last-quarter">Last Quarter</SelectItem>
-                    <SelectItem value="custom">Custom Range</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Location</label>
-                <Select value={location} onValueChange={setLocation}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All NCR</SelectItem>
-                    <SelectItem value="delhi-central">Delhi Central</SelectItem>
-                    <SelectItem value="noida">Noida</SelectItem>
-                    <SelectItem value="gurgaon">Gurgaon</SelectItem>
-                  </SelectContent>
-                </Select>
+        {view === "list" ? (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {paginated.map((r) => (
+                <ReportCard key={r.id} report={r} onStatusChange={handleStatusChange} />
+              ))}
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">Page {page} of {totalPages}</div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
+                <Button size="sm" variant="outline" disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Report Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="card-gradient shadow-soft">
-            <CardContent className="p-4 text-center">
-              <div className="space-y-2">
-                <Calendar className="w-6 h-6 mx-auto text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Report Period</p>
-                <p className="text-lg font-bold text-foreground capitalize">{dateRange.replace("-", " ")}</p>
+          </>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <div className="h-[560px] w-full">
+                <MapContainer center={[28.6139, 77.209]} zoom={9} style={{ height: "100%", width: "100%" }}>
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  {filtered.map((r) => (
+                    <Marker key={r.id} position={[r.coordinates.lat, r.coordinates.lng]}>
+                      <Popup>
+                        <div className="text-sm max-w-xs">
+                          <div className="font-medium mb-1">{r.locationName}</div>
+                          <div className="mb-1">{r.description}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(r.timestamp).toLocaleString()} — {r.status}
+                          </div>
+                          <div className="mt-2 flex gap-2">
+                            {r.status !== "Verified" && (
+                              <Button size="sm" variant="secondary" onClick={() => handleStatusChange(r.id, "Verified")}>Verify</Button>
+                            )}
+                            {r.status !== "Resolved" && (
+                              <Button size="sm" onClick={() => handleStatusChange(r.id, "Resolved")}>Resolve</Button>
+                            )}
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
               </div>
             </CardContent>
           </Card>
+        )}
 
-          <Card className="card-gradient shadow-soft">
-            <CardContent className="p-4 text-center">
-              <div className="space-y-2">
-                <FileText className="w-6 h-6 mx-auto text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Report Type</p>
-                <p className="text-lg font-bold text-foreground capitalize">{reportType}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-gradient shadow-soft">
-            <CardContent className="p-4 text-center">
-              <div className="space-y-2">
-                <div className="w-6 h-6 mx-auto bg-primary rounded-full flex items-center justify-center">
-                  <span className="text-xs font-bold text-primary-foreground">{reportData.length}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">Data Points</p>
-                <p className="text-lg font-bold text-foreground">{reportData.length} Records</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-gradient shadow-soft">
-            <CardContent className="p-4 text-center">
-              <div className="space-y-2">
-                <Download className="w-6 h-6 mx-auto text-green-600" />
-                <p className="text-sm text-muted-foreground">Status</p>
-                <p className="text-lg font-bold text-green-600">Ready</p>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="text-xs text-muted-foreground">
+          Data is mock and actions are client-side only. Ready for backend integration.
         </div>
-
-        {/* Data Preview */}
-        <Card className="card-gradient shadow-soft">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-foreground">Data Preview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-auto max-h-96">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {reportData.length > 0 && Object.keys(reportData[0]).map((header) => (
-                      <TableHead key={header} className="capitalize">{header.replace(/([A-Z])/g, ' $1').trim()}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reportData.slice(0, 10).map((row, index) => (
-                    <TableRow key={index}>
-                      {Object.values(row).map((value, cellIndex) => (
-                        <TableCell key={cellIndex}>
-                          {typeof value === 'string' && value.includes('T') ? 
-                            new Date(value).toLocaleString() : 
-                            String(value)
-                          }
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {reportData.length > 10 && (
-              <div className="mt-4 p-3 bg-muted/50 rounded-lg text-center">
-                <p className="text-sm text-muted-foreground">
-                  Showing first 10 of {reportData.length} records. Export to see all data.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Audit Log */}
-        <Card className="card-gradient shadow-soft">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-foreground">Audit Log</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">User</label>
-                <Select value={auditUser} onValueChange={setAuditUser}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select user" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="admin">admin</SelectItem>
-                    <SelectItem value="analyst">analyst</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Date</label>
-                <Select value={auditDate} onValueChange={setAuditDate}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select date" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Dates</SelectItem>
-                    <SelectItem value="2025-09-23">2025-09-23</SelectItem>
-                    <SelectItem value="2025-09-22">2025-09-22</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <Button variant="outline" onClick={() => { setAuditUser("all"); setAuditDate("all"); }}>Reset</Button>
-              </div>
-            </div>
-            <div className="overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Time</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAudit.map((row, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell>{row.user}</TableCell>
-                      <TableCell>{row.action}</TableCell>
-                      <TableCell>{new Date(row.time).toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   );

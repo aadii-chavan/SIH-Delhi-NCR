@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import uvicorn
+from typing import Optional
+from pydantic import BaseModel
 from services.fetch_cpcb import fetch_cpcb_data
 from services.fetch_firms import fetch_firms_fire_count
 from services.source_processor import compute_source_breakdown
@@ -11,12 +13,26 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,  # Wildcard origins cannot be used with credentials
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/api/source-breakdown")
+
+class Sources(BaseModel):
+    stubble: float
+    traffic: float
+    industrial: float
+    other: float
+
+
+class SourceBreakdownResponse(BaseModel):
+    timestamp: Optional[str] = None
+    zone: str
+    sources: Sources
+    previous: Sources
+
+@app.get("/api/source-breakdown", response_model=SourceBreakdownResponse)
 async def get_source_breakdown():
     # Fetch data concurrently
     cpcb_task = asyncio.create_task(fetch_cpcb_data())
@@ -25,17 +41,22 @@ async def get_source_breakdown():
     fire_count = await firms_task
     breakdown = compute_source_breakdown(pollutants, fire_count)
     # Simulate previous day's breakdown for comparison
-    prev_breakdown = {
-        "stubble": max(0, breakdown["stubble"] - 5),  # 5% decrease
-        "traffic": max(0, breakdown["traffic"] - 5),  # 5% decrease  
-        "industrial": breakdown["industrial"],        # No change
-        "other": 100 - max(0, breakdown["stubble"] - 5) - max(0, breakdown["traffic"] - 5) - breakdown["industrial"]
-    }
+    prev_stubble = max(0, breakdown["stubble"] - 5)
+    prev_traffic = max(0, breakdown["traffic"] - 5)
+    prev_industrial = breakdown["industrial"]
+    prev_other_raw = 100 - prev_stubble - prev_traffic - prev_industrial
+    prev_other = max(0, round(prev_other_raw, 2))
+
     return {
         "timestamp": None,
         "zone": "Delhi Central",
         "sources": breakdown,
-        "previous": prev_breakdown
+        "previous": {
+            "stubble": round(prev_stubble, 2),
+            "traffic": round(prev_traffic, 2),
+            "industrial": round(prev_industrial, 2),
+            "other": prev_other,
+        },
     }
 
 if __name__ == "__main__":
